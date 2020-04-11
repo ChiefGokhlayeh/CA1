@@ -7,10 +7,10 @@
 ;
 ;   Author:   J.Friedrich
 ;   Last Modified: W.Zimmermann, Mar 24, 2020
-;                  Andreas Baulig, Apr 06, 2020
+;                  Andreas Baulig, Jakob Janusch, Apr 06, 2020
 
         IFNDEF _HCS12_SERIALMON
-            IFNDEF SIMULATOR 
+            IFNDEF SIMULATOR
                 SIMULATOR: EQU 1
             ENDIF
         ENDIF

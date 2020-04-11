@@ -8,7 +8,7 @@
 ;
 ;   Author:   W.Zimmermann, Jan 30, 2020
 ;            (based on code provided by J. Friedrich)
-;   Modified: 2020-04-05 Andreas Baulig
+;   Modified: 2020-04-05 Andreas Baulig, Jakob Janusch
 ;
 
 ; export symbols
@@ -32,11 +32,11 @@ main:                                   ; Begin of the program
 Entry:
         LDS  #__SEG_END_SSTACK          ; Initialize stack pointer
         CLI                             ; Enable interrupts, needed for debugger
-        
+
         LDY #0                          ; Initialize counter
         LDX #hex                        ; Load address of output hex-string
-        
+
 loop:   TFR Y, D
-        JSR hextoascii 
+        JSR hextoascii
         INY
         BRA loop

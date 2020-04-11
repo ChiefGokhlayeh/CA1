@@ -8,7 +8,7 @@
 ;
 ;   Author:   W.Zimmermann, Jan 30, 2020
 ;            (based on code provided by J. Friedrich)
-;   Modified: 2020-04-05 Andreas Baulig
+;   Modified: 2020-04-05 Andreas Baulig, Jakob Janusch
 ;
 
 ; export symbols
@@ -27,13 +27,13 @@
 ; ROM: Code section
 .init: SECTION
 
-tolower:   
+tolower:
         PSHX                            ; Save registers
         PSHB                            ;
-        
+
         TFR D, X                        ; Use X as pointer to current char
         BRA lwr_L2                      ; Jump to loop check
-        
+
 lwr_L0: CMPB #'A'                       ; Check if char in B is between 'A' and 'Z', otherwise continue with next char
         BLT lwr_L1                      ;
         CMPB #'Z'                       ;
@@ -42,12 +42,12 @@ lwr_L0: CMPB #'A'                       ; Check if char in B is between 'A' and 
         STAB X                          ; Save B at current X address
 
 lwr_L1: INX                             ; Increment index X
-        
+
 lwr_L2: LDAB X
         CMPB #0                         ;
         BGT lwr_L0                      ;
-        
+
         PULB                            ; Restore registers
         PULX                            ;
-        
+
         RTS                             ; Return

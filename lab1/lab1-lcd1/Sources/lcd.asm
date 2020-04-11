@@ -8,6 +8,7 @@
 ;
 ;   Author:   J.Friedrich
 ;   Last Modified: W.Zimmermann, Mar 24, 2020
+;                  A.Baulig, J.Janusch, Apr 2020
 ;
 ;   Usage:
 ;               JSR initLCD   --> Initialization
@@ -69,7 +70,7 @@
 ;   hardware) and symbol SIMULATOR (defined, when compiled for the SIMULATOR target).
 
   IFNDEF _HCS12_SERIALMON
-    IFNDEF SIMULATOR 
+    IFNDEF SIMULATOR
        SIMULATOR: EQU 1
     ENDIF
   ENDIF

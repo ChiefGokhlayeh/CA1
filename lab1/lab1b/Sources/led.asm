@@ -8,7 +8,7 @@
 ;
 ;   Author:   W.Zimmermann, Mar 24, 2020
 ;            (based on code provided by J. Friedrich)
-;   Modified: 2020-03-30 Andreas Baulig
+;   Modified: 2020-03-30 Andreas Baulig, Jakob Janusch
 ;
 
 ; export symbols

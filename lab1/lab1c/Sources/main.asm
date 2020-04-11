@@ -8,7 +8,7 @@
 ;
 ;   Author:   W.Zimmermann, Jan 30, 2020
 ;            (based on code provided by J. Friedrich)
-;   Modified: 2020-04-05 Andreas Baulig
+;   Modified: 2020-04-05 Andreas Baulig, Jakob Janusch
 ;
 
 ; export symbols
@@ -42,10 +42,10 @@ Entry:
         LDX #Ctext
         LDY #Vtext
         JSR strcpy                      ; Copy string at X to memory at Y
-        
+
         LDD #Vtext                      ; Load address of Vtext into D so we can pass it to tolower()
         JSR tolower
-        
+
 
 halt:   BRA halt
 
@@ -53,21 +53,21 @@ strcpy:
         PSHX                            ; Save registers
         PSHY                            ;
         PSHB                            ;
-        
+
         LDAB X                          ; Load first char of X before entering loop
         BRA cpy_L2                      ; Jump to loop check
-        
+
 cpy_L0: LDAB X                          ; Copy Ctext[X] to Vtext[X]
         STAB Y                          ;
 
 cpy_L1: INX                             ; Increment index X
         INY                             ; Increment index Y
-        
+
 cpy_L2: CMPB #0                         ; Check if end-of-string is reached by comparing B (i.e. Ctext[X] against '\0')
         BGT cpy_L0                      ; If end-of-string: exit loop
-        
+
         PULB                            ; Restore registers
         PULY                            ;
         PULX                            ;
-        
+
         RTS                             ; Return
