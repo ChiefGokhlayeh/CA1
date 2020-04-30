@@ -31,9 +31,9 @@
 
 ; RAM: Variable data section
 .data:  SECTION
-i:      DC.W 1
-dec:    DC.B 7
-hex:    DC.B 5
+i:      DS.W 1
+dec:    DS.B 7
+hex:    DS.B 5
 
 ; ROM: Constant data
 .const: SECTION
