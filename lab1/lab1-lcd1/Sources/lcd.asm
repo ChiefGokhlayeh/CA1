@@ -214,9 +214,15 @@ msg_out:                  ; output the message character by character
 next:     ldaa 0,x        ; get character
           decb
           beq  wEnd       ; not more than 16 characters
+          tsta            ; if A is zero-terminator, don't write it, instead fill with spaces until 16 characters have been written
+          beq  fill_spaces
           jsr  outputByte ; write character to LCD
           inx             ; continue with next character
           bra  next
+fill_spaces:
+          ldaa #$20       ; write ASCII space instead of whatever was in A
+          jsr  outputByte ; write character to LCD
+          bra  next       ; repeat loop WITHOUT incrementing X, A will thereby remain the last char in string
 wEnd:     pulx
           puld
           rts
