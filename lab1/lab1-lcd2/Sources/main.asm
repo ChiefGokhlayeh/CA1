@@ -44,7 +44,9 @@ hex:    DC.B 5
 main:
 Entry:
                     LDS #__SEG_END_SSTACK          ; Initialize stack pointer
-                    CLI                             ; Enable interrupts, needed for debugger
+                    CLI                            ; Enable interrupts, needed for debugger
+                    
+                    MOVB #$00, DDRH                ; $00 -> DDRH:  Port H.7...0 as inputs (buttons)
 
                     JSR delay_10ms                 ; Delay 20ms during power up
                     JSR delay_10ms
