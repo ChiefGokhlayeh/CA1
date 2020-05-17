@@ -14,20 +14,6 @@
 
 #include "wrapper.h"
 
-
-
-// PLEASE NOTE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!:
-//
-// Files lcd.asm and decToASCII.asm are dummy files without functionality. Please 
-// overwrite them with the lcd.asm and decToASCII.asm files, which you developped 
-// and bug fixed in lab 1.
-//
-// Before you can actually use these functions, you must also fully implement
-// the wrapper functions in wrapper.h
-//
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
 char string[80]="";
 int  counter = 0;
 

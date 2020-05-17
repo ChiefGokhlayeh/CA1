@@ -11,18 +11,20 @@
 #ifndef __wrapper__
 #define __wrapper__
 
-
-// Prototypes and wrapper functions for decToASCII (from lab 1)
-void decToASCII(void);
+// Prototypes and wrapper functions for dectoascii (from lab 1)
+void dectoascii(void);
 
 void decToASCII_Wrapper(char *txt, int val)
 {   
     asm
-    {
-
-// ToDo: Add your inline assembler code here to pass parameters
-//       and call assembler function decToASCII
-
+    {        
+        LDX txt
+        LDD val
+        
+        JSR dectoascii
+        
+        STD val
+        STX txt
     }
 }
 
@@ -33,14 +35,13 @@ void writeLine(void);
 
 void WriteLine_Wrapper(char *text, char line)
 {   asm
-    {	
-
-// ToDo: Add your inline assembler code here to pass parameters
-//       and call assembler function writeLine
-
+    {
+        LDAB line
+        LDX text
+        
+        JSR writeLine
     }
 }
-
 
 // Note: initLCD and delay_10ms can be called directly without wrappers, 
 //       as they don't have parameters and return values.
