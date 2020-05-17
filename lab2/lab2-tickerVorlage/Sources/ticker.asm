@@ -71,7 +71,7 @@ initTicker:
         ; driver frequency of 187500 Hz or 5.3333 us time interval
         ldab TSCR2
         andb #$f8
-        orab #8
+        orab #7
         stab TSCR2
         bclr TCTL1,#TCTL1_CH4   ; Switch timer on
         rts
