@@ -1,2 +1,4 @@
 **/bin
 **/lab*_Data
+*.dbg
+*.map
