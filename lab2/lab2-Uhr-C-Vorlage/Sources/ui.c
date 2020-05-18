@@ -22,6 +22,8 @@
 #define INCREMENT_SECONDS_BUTTON (BUTTON3)
 #define SWITCH_MODE_BUTTON (BUTTON4)
 
+#define TOGGLE_LED (0x01)
+
 #define BUTTON_PORT (PTH)
 
 #define LONG_PRESS_TICK_COUNT (2)
@@ -70,7 +72,7 @@ static void init_led(void)
     DDRJ_DDRJ1 = 1; // Port J.1 as output
     PTIJ_PTIJ1 = 0;
     DDRB = 0xFF; // Port B as output
-    PORTB = 0x55;
+    PORTB = 0x00;
 }
 
 static void init_buttons(void)
@@ -238,6 +240,8 @@ void ui_tick(void)
     default:
         break;
     }
+
+    PORTB = PORTB & TOGGLE_LED ? PORTB & ~TOGGLE_LED : PORTB | TOGGLE_LED;
 
     last_button_state = cur_button_state;
 }
