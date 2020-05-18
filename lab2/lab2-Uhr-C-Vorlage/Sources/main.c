@@ -45,8 +45,6 @@ void main(void)
             ui_tick();
         }
 
-        ui_poll_buttons();
-
         /* In the simulator it was observed, that holding the button will STALL
          * the simulator, i.e. this loop is executed contiously without
          * interrupts correctly being processed. This seems to be a limitation

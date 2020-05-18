@@ -9,7 +9,15 @@ void clock_enable(void);
 
 void clock_disable(void);
 
-int clock_get_current_tick(void);
+unsigned char clock_enabled(void);
+
+unsigned int clock_get_current_tick(void);
+
+void clock_set_hours(unsigned char h);
+
+void clock_set_minutes(unsigned char m);
+
+void clock_set_seconds(unsigned char s);
 
 unsigned char clock_get_hours(void);
 
