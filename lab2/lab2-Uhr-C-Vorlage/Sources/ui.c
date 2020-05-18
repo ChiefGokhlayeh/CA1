@@ -17,12 +17,13 @@
 #define BUTTON3 (0x04)
 #define BUTTON4 (0x08)
 
-#define INCREMENT_HOURS_BUTTON (BUTTON1)
+#define INCREMENT_HOURS_BUTTON (BUTTON3)
 #define INCREMENT_MINUTES_BUTTON (BUTTON2)
-#define INCREMENT_SECONDS_BUTTON (BUTTON3)
+#define INCREMENT_SECONDS_BUTTON (BUTTON1)
 #define SWITCH_MODE_BUTTON (BUTTON4)
 
 #define TOGGLE_LED (0x01)
+#define MODE_LED (0x80)
 
 #define BUTTON_PORT (PTH)
 
@@ -80,44 +81,25 @@ static void init_buttons(void)
     DDRH = 0x00;
 }
 
-static void write_line_time(unsigned int offset,
-                            unsigned char hours,
-                            unsigned char minutes,
-                            unsigned char seconds)
+static void update_time_display(void)
 {
-    char *cur_pos = &(line_buffer[offset]);
+    char *cur_pos = &(line_buffer[0]);
 
-    dec_to_ascii_wrapper(dec_buffer, hours);
+    dec_to_ascii_wrapper(dec_buffer, clock_get_hours());
     cur_pos = memcpy(cur_pos, dec_buffer + CHAR_PER_DEC - CHAR_PER_CLOCK_DIGIT, CHAR_PER_CLOCK_DIGIT);
     *cur_pos = ':';
     cur_pos++;
 
-    dec_to_ascii_wrapper(dec_buffer, minutes);
+    dec_to_ascii_wrapper(dec_buffer, clock_get_minutes());
     cur_pos = memcpy(cur_pos, dec_buffer + CHAR_PER_DEC - CHAR_PER_CLOCK_DIGIT, CHAR_PER_CLOCK_DIGIT);
     *cur_pos = ':';
     cur_pos++;
 
-    dec_to_ascii_wrapper(dec_buffer, seconds);
+    dec_to_ascii_wrapper(dec_buffer, clock_get_seconds());
     cur_pos = memcpy(cur_pos, dec_buffer + CHAR_PER_DEC - CHAR_PER_CLOCK_DIGIT, CHAR_PER_CLOCK_DIGIT);
     *cur_pos = '\0';
 
     write_line_wrapper(line_buffer, 0);
-}
-
-static void update_time_display(void)
-{
-    write_line_time(0, clock_get_hours(), clock_get_minutes(), clock_get_seconds());
-}
-
-static void update_edit_display(void)
-{
-    char *cur_pos = &(line_buffer[0]);
-    *cur_pos = 'E';
-    cur_pos++;
-    *cur_pos = ' ';
-    cur_pos++;
-
-    write_line_time(cur_pos - line_buffer, clock_get_hours(), clock_get_minutes(), clock_get_seconds());
 }
 
 static void change_mode(enum ui_mode next_mode)
@@ -126,10 +108,14 @@ static void change_mode(enum ui_mode next_mode)
     {
     case NORMAL_MODE:
         clock_enable();
+
+        PORTB &= ~MODE_LED;
         break;
 
     case SET_MODE:
         clock_disable();
+
+        PORTB |= MODE_LED;
     default:
         break;
     }
@@ -214,7 +200,7 @@ void ui_tick(void)
         }
         break;
     case SET_MODE:
-        update_edit_display();
+        update_time_display();
 
         if (check_button_press(cur_button_state, SWITCH_MODE_BUTTON, SHORT_PRESS_TICK_COUNT))
         {
