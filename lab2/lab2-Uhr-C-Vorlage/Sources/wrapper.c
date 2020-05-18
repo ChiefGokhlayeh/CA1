@@ -5,7 +5,7 @@ void wait_for_interrupt(void)
     asm WAI;
 }
 
-void write_line_wrapper(char *text, char line)
+void write_line_wrapper(const char *text, char line)
 {
     asm
     {

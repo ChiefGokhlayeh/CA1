@@ -29,6 +29,7 @@
 
 #define LONG_PRESS_TICK_COUNT (2)
 #define SHORT_PRESS_TICK_COUNT (0)
+#define INFO_TEXT_SWITCH_TICK_COUNT (10)
 
 #define CHAR_PER_CLOCK_DIGIT (2)
 #define CHAR_PER_DEC (6)
@@ -48,6 +49,15 @@ enum ui_mode
     SET_MODE
 };
 
+enum ui_info_text
+{
+    GROUP_MEMBERS,
+    COPYRIGHT
+};
+
+static const char *COPYRIGHT_TEXT = "(C) IT 2020";
+static const char *GROUP_MEMBERS_TEXT = "Baulig, Janusch";
+
 static enum ui_mode cur_mode;
 
 static unsigned int press_start_tick = 0;
@@ -56,6 +66,9 @@ static unsigned char button_ignore_flags = 0;
 
 static char line_buffer[LCD_CHAR_PER_LINE + 1];
 static char dec_buffer[CHAR_PER_DEC];
+
+static enum ui_info_text cur_info_text;
+static unsigned char ticks_info_text_displayed = 0;
 
 static void *memcpy(void *dst, const void *src, unsigned char len)
 {
@@ -102,6 +115,22 @@ static void update_time_display(void)
     write_line_wrapper(line_buffer, 0);
 }
 
+static void update_info_text_display(void)
+{
+    switch (cur_info_text)
+    {
+    case GROUP_MEMBERS:
+        write_line_wrapper(GROUP_MEMBERS_TEXT, 1);
+        break;
+    case COPYRIGHT:
+        write_line_wrapper(COPYRIGHT_TEXT, 1);
+        break;
+    default:
+        write_line_wrapper("", 1);
+        break;
+    }
+}
+
 static void change_mode(enum ui_mode next_mode)
 {
     switch (next_mode)
@@ -129,11 +158,13 @@ void ui_init(void)
 
     init_lcd();
     write_line_wrapper("Clock Template", 0);
-    write_line_wrapper("(C) HE Prof. Z", 1);
 
     init_buttons();
 
     cur_mode = NORMAL_MODE;
+    cur_info_text = GROUP_MEMBERS;
+
+    update_info_text_display();
 }
 
 unsigned int check_button_press(unsigned char cur_button_state, unsigned char button, unsigned int ticks_to_activate)
@@ -225,6 +256,25 @@ void ui_tick(void)
         break;
     default:
         break;
+    }
+
+    ticks_info_text_displayed++;
+    if (ticks_info_text_displayed >= INFO_TEXT_SWITCH_TICK_COUNT)
+    {
+        switch (cur_info_text)
+        {
+        case GROUP_MEMBERS:
+            cur_info_text = COPYRIGHT;
+            break;
+        case COPYRIGHT:
+            cur_info_text = GROUP_MEMBERS;
+            break;
+        default:
+            break;
+        }
+
+        update_info_text_display();
+        ticks_info_text_displayed = 0;
     }
 
     PORTB = PORTB & TOGGLE_LED ? PORTB & ~TOGGLE_LED : PORTB | TOGGLE_LED;

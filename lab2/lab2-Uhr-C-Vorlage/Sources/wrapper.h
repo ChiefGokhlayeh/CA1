@@ -18,7 +18,7 @@ void dec_to_ascii_wrapper(char *text, int value);
 void init_lcd(void);
 void delay_10ms(void);
 void write_line(void);
-void write_line_wrapper(char *text, char line);
+void write_line_wrapper(const char *text, char line);
 
 // Prototypes and wrapper functions for ticker (from lab 2)
 void init_ticker(void);
