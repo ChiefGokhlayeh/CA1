@@ -2,3 +2,5 @@
 **/lab*_Data
 *.dbg
 *.map
+*.old
+.vscode/
