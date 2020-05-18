@@ -16,6 +16,7 @@
 #include "wrapper.h"
 #include "clock.h"
 #include "ui.h"
+#include "thermometer.h"
 
 static unsigned char tick_event = 0;
 
@@ -32,6 +33,8 @@ void main(void)
 
     clock_init();
 
+    thermometer_init();
+
     init_ticker();
 
     for (;;)
@@ -39,6 +42,8 @@ void main(void)
         if (tick_event)
         {
             tick_event = 0;
+
+            thermometer_take_measurement();
 
             clock_tick();
 

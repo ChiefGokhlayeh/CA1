@@ -2,6 +2,7 @@
 
 #include "clock.h"
 #include "wrapper.h"
+#include "thermometer.h"
 
 #include <hidef.h>
 #include <mc9s12dp256.h>
@@ -96,6 +97,7 @@ static void init_buttons(void)
 
 static void update_time_display(void)
 {
+    int temperature = 0;
     char *cur_pos = &(line_buffer[0]);
 
     dec_to_ascii_wrapper(dec_buffer, clock_get_hours());
@@ -110,6 +112,14 @@ static void update_time_display(void)
 
     dec_to_ascii_wrapper(dec_buffer, clock_get_seconds());
     cur_pos = memcpy(cur_pos, dec_buffer + CHAR_PER_DEC - CHAR_PER_CLOCK_DIGIT, CHAR_PER_CLOCK_DIGIT);
+    *cur_pos = ' ';
+    cur_pos++;
+
+    temperature = thermometer_get_measurement();
+    dec_to_ascii_wrapper(dec_buffer, temperature);
+    cur_pos = memcpy(cur_pos, dec_buffer, CHAR_PER_DEC);
+    *cur_pos = 'C';
+    cur_pos++;
     *cur_pos = '\0';
 
     write_line_wrapper(line_buffer, 0);
