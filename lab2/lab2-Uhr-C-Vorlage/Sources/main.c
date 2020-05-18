@@ -7,8 +7,8 @@
     Author:  W.Zimmermann, Apr 15, 2020
 */
 
-#include <hidef.h>                              // Common defines
-#include <mc9s12dp256.h>                        // CPU specific defines
+#include <hidef.h>       // Common defines
+#include <mc9s12dp256.h> // CPU specific defines
 
 #pragma LINK_INFO DERIVATIVE "mc9s12dp256b"
 
@@ -16,11 +16,12 @@
 
 // ****************************************************************************
 
-void initLED_C(void)
-{   DDRJ_DDRJ1  = 1;	  	// Port J.1 as output
-    PTIJ_PTIJ1  = 0;		
-    DDRB        = 0xFF;		// Port B as output
-    PORTB       = 0x55;
+void initLED(void)
+{
+    DDRJ_DDRJ1 = 1; // Port J.1 as output
+    PTIJ_PTIJ1 = 0;
+    DDRB = 0xFF; // Port B as output
+    PORTB = 0x55;
 }
 
 // ****************************************************************************
@@ -28,23 +29,25 @@ void initLED_C(void)
 unsigned char clockEvent = 0;
 
 // ****************************************************************************
-void main(void) 
-{   EnableInterrupts;                           // Global interrupt enable
+void main(void)
+{
+    EnableInterrupts; // Global interrupt enable
 
-    initLED_C();                    		// Initialize the LEDs
+    initLED(); // Initialize the LEDs
 
-    initLCD();                    		// Initialize the LCD
-    WriteLine_Wrapper("Clock Template", 0);
-    WriteLine_Wrapper("(C) HE Prof. Z", 1);    
+    initLCD(); // Initialize the LCD
+    writeLine_wrapper("Clock Template", 0);
+    writeLine_wrapper("(C) HE Prof. Z", 1);
 
-    initTicker();                               // Initialize the time ticker
+    initTicker(); // Initialize the time ticker
 
-    for(;;)                                     // Endless loop
-    {   if (clockEvent)
-    	{   clockEvent = 0;
-    
-// ??? Add your code here ???
-    
-    	}
+    for (;;) // Endless loop
+    {
+        if (clockEvent)
+        {
+            clockEvent = 0;
+
+            // ??? Add your code here ???
+        }
     }
 }

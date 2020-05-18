@@ -13,7 +13,7 @@
 // Prototypes and wrapper functions for dectoascii (from lab 1)
 void dectoascii(void);
 
-void decToASCII_Wrapper(char *txt, int val)
+void decToASCII_wrapper(char *txt, int val)
 {
     asm
     {
@@ -32,7 +32,7 @@ void initLCD(void);
 void delay_10ms(void);
 void writeLine(void);
 
-void WriteLine_Wrapper(char *text, char line)
+void writeLine_wrapper(char *text, char line)
 {
     asm
     {
