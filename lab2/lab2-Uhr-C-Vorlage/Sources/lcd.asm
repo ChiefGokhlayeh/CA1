@@ -11,10 +11,10 @@
 ;                  A.Baulig, J.Janusch, Apr 2020
 ;
 ;   Usage:
-;               JSR initLCD   --> Initialization
+;               JSR init_lcd   --> Initialization
 ;                                 (Must be called once)
 ;
-;               JSR writeLine --> Output a zero-termated string to LCD
+;               JSR write_line --> Output a zero-termated string to LCD
 ;                                 Parameter:
 ;                                 X ... Pointer to string
 ;                                 B ... Row number (0 or 1)
@@ -42,12 +42,12 @@
 ;   it must be initialized via a sequence of commands. When writing to the LCD display,
 ;   several time delays have to be respected.
 ;
-;   From a user's perspective, initialization is done by calling function initLCD(). Internally,
+;   From a user's perspective, initialization is done by calling function init_lcd(). Internally,
 ;   this function calls inidsp1() and inidsp2(), to write the required command sequence. After
 ;   initialization, the display is cleared.
 ;
 ;   After initialization, the user program can write strings to both lines of the LCD display
-;   via function writeLine(). Before calling writeLine(), the user program has to copy a
+;   via function write_line(). Before calling write_line(), the user program has to copy a
 ;   point to the string into register X and the row number (0 or 1) in register B. The string
 ;   must be zero terminated.
 ;   Both rows of the LCD can display 16 characters. The output will start in the first column
@@ -76,7 +76,7 @@
   ENDIF
 
 ; export symbols
-        XDEF initLCD, writeLine, delay_10ms
+        XDEF init_lcd, write_line, delay_10ms
 
 ; include derivative specific macros
         INCLUDE 'mc9s12dp256.inc'
@@ -141,10 +141,10 @@ LCD_LINE1: equ   $C0    ; LCD command: set cursor to begin of line 1 (Command Se
 .init:  SECTION
 
 ;**************************************************************
-; Public interface function: initLCD ... Initialize LCD (called once)
+; Public interface function: init_lcd ... Initialize LCD (called once)
 ; Parameter: -
 ; Return:    -
-initLCD:  pshd
+init_lcd:  pshd
           pshx
 
           jsr  delay_10ms
@@ -187,11 +187,11 @@ inext2:   ldaa 0,x          ; get command
           rts
 
 ;**************************************************************
-; Public interface function: writeLine ... Write zero-terminated string to LCD
+; Public interface function: write_line ... Write zero-terminated string to LCD
 ; Parameter: X ... pointer to string
 ;            B ... row number (0 or 1)
 ; Return:    -
-writeLine:
+write_line:
           pshd
           pshx
 

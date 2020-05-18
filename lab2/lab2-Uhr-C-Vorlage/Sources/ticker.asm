@@ -24,9 +24,10 @@
 ; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ; Export symbols
-        XDEF initTicker
+        XDEF init_ticker
 
 ; Import symbols
+        XREF handle_tick
 
 ; Include derivative specific macros
         INCLUDE 'mc9s12dp256.inc'
@@ -49,7 +50,6 @@ ticks:    ds.b 1                ; Ticker counter
         ORG $FFE6
 int12:  DC.W isrECT4
 
-
 ; ROM: Code section
 .init:  SECTION
 
@@ -57,7 +57,7 @@ int12:  DC.W isrECT4
 ; Public interface function: initLCD ... Initialize Ticker (called once)
 ; Parameter: -
 ; Return:    -
-initTicker:
+init_ticker:
         ldab #TIMER_ON          ; Timer master ON switch
         stab TSCR1
         bset TIOS,#TIMER_CH4    ; Set channel 4 in "output compare" mode
@@ -87,10 +87,6 @@ isrECT4:
         ldab #TIMER_CH4         ; Clear the interrupt flag, write a 1 to bit 4
         stab TFLG1
 
-        ldab PORTB              ; In this example we let blink the LED on port B.7 (every 10ms)
-        eorb #$80
-        stab PORTB
-
         inc  ticks              ; Check, if 1 sec has passed
         ldaa ticks
         cmpa #ONESEC
@@ -98,12 +94,6 @@ isrECT4:
 
         clr  ticks              ; If yes, execute user's code
 
-        ; --- Add user code here: Add whatever you want to do every second ---
-
-        ldab PORTB              ; In this example we let blink the LED on port B.0 (every 1s)
-        eorb #$01
-        stab PORTB
-
-        ; --- End of user code -----------------------------------------------
+        JSR handle_tick          ; Call into C domain and let interrupt be further handled there
 
 notYet: rti

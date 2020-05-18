@@ -5,49 +5,58 @@
     Hochschule Esslingen
 
     Author:  W.Zimmermann, Apr 15, 2020
+    Modified: A.Baulig, J.Janusch
 */
 
-#include <hidef.h>       // Common defines
-#include <mc9s12dp256.h> // CPU specific defines
+#include <hidef.h>
+#include <mc9s12dp256.h>
 
 #pragma LINK_INFO DERIVATIVE "mc9s12dp256b"
 
 #include "wrapper.h"
+#include "clock.h"
+#include "ui.h"
 
-// ****************************************************************************
+static unsigned char tick_event = 0;
 
-void initLED(void)
+void handle_tick(void)
 {
-    DDRJ_DDRJ1 = 1; // Port J.1 as output
-    PTIJ_PTIJ1 = 0;
-    DDRB = 0xFF; // Port B as output
-    PORTB = 0x55;
+    tick_event = 1;
 }
 
-// ****************************************************************************
-// Global variables
-unsigned char clockEvent = 0;
-
-// ****************************************************************************
 void main(void)
 {
-    EnableInterrupts; // Global interrupt enable
+    EnableInterrupts;
 
-    initLED(); // Initialize the LEDs
+    ui_init();
 
-    initLCD(); // Initialize the LCD
-    writeLine_wrapper("Clock Template", 0);
-    writeLine_wrapper("(C) HE Prof. Z", 1);
+    clock_init();
 
-    initTicker(); // Initialize the time ticker
+    init_ticker();
 
-    for (;;) // Endless loop
+    for (;;)
     {
-        if (clockEvent)
+        if (tick_event)
         {
-            clockEvent = 0;
+            tick_event = 0;
 
-            // ??? Add your code here ???
+            clock_tick();
+
+            ui_tick();
         }
+
+        ui_poll_buttons();
+
+        /* In the simulator it was observed, that holding the button will STALL
+         * the simulator, i.e. this loop is executed contiously without
+         * interrupts correctly being processed. This seems to be a limitation
+         * of the simulator, as real hardware would interrupt the normal
+         * programm flow and prioritize the interrupt. With waitForInterrupt()
+         * we instruct the CPU to halt until any interrupt occurs, with the neat
+         * side effect of saving power.
+         *
+         * As we currently have the timer interrupt configured with a period of
+         * 10ms, this instruction should halt 10ms max. */
+        wait_for_interrupt();
     }
 }

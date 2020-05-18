@@ -7,46 +7,26 @@
     Author:  W.Zimmermann, Jan 30, 2020
 */
 
-#ifndef __wrapper__
-#define __wrapper__
+#ifndef WRAPPER_H_
+#define WRAPPER_H_
 
 // Prototypes and wrapper functions for dectoascii (from lab 1)
-void dectoascii(void);
-
-void decToASCII_wrapper(char *txt, int val)
-{
-    asm
-    {
-        LDX txt
-        LDD val
-
-        JSR dectoascii
-
-        STD val
-        STX txt
-    }
-}
+void dec_to_ascii(void);
+void dec_to_ascii_wrapper(char *text, int value);
 
 // Prototypes and wrapper functions for LCD driver (from lab 1)
-void initLCD(void);
+void init_lcd(void);
 void delay_10ms(void);
-void writeLine(void);
-
-void writeLine_wrapper(char *text, char line)
-{
-    asm
-    {
-        LDAB line
-        LDX text
-
-        JSR writeLine
-    }
-}
+void write_line(void);
+void write_line_wrapper(char *text, char line);
 
 // Prototypes and wrapper functions for ticker (from lab 2)
-void initTicker(void);
+void init_ticker(void);
 
-// Note: initLCD, initTicker and delay_10ms can be called directly without
+// Prototypes and wrapper functions for miscellanous instructions
+void wait_for_interrupt(void);
+
+// Note: init_lcd, init_ticker and delay_10ms can be called directly without
 //       wrappers, as they don't have parameters and return values.
 
-#endif
+#endif /* WRAPPER_H_ */

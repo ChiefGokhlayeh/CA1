@@ -12,7 +12,7 @@
 ;
 
 ; export symbols
-        XDEF dectoascii
+        XDEF dec_to_ascii
 
 ; ROM: Constant data
 .const: SECTION
@@ -20,7 +20,7 @@
 ; ROM: Code section
 .init: SECTION
 
-dectoascii:
+dec_to_ascii:
         PSHX                ; Save registers
         PSHY                ;
         PSHD                ;
