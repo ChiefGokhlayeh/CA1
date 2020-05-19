@@ -9,10 +9,10 @@ void write_line_wrapper(const char *text, char line)
 {
     asm
     {
-        LDAB line
-        LDX text
+        LDAB line       ; Load line number into B
+        LDX text        ; Load address of line buffer into X
 
-        JSR write_line
+        JSR write_line  ; Call Assembly subroutine write_line, located in lcd.asm
     }
 }
 
@@ -20,28 +20,25 @@ void dec_to_ascii_wrapper(char *txt, int val)
 {
     asm
     {
-        LDX txt
-        LDD val
+        LDX txt             ; Load address of char buffer into X
+        LDD val             ; Load integer value into D
 
-        JSR dec_to_ascii
-
-        STD val
-        STX txt
+        JSR dec_to_ascii    ; Call Assembly subroutine dec_to_ascii, located in decToASCII.asm
     }
 }
 
-int long_divide_int_signed(long *dividend, int divisor)
+int long_divide_int_signed(const long *dividend, int divisor)
 {
     int *tmp = &divisor;
     asm
     {
-        LDX dividend
-        LDY 0, X
-        LDD 2, X
-        LDX divisor
-        EDIVS
-        LDX tmp
-        STY 0, X
+        LDX dividend    ; Load dividend address into X to obtain lower and upper WORD
+        LDY 0, X        ; Load lower 16-bit WORD (most siginificant WORD) into Y
+        LDD 2, X        ; Load upper 16-but WORD (least significant WORD) into D
+        LDX divisor     ; Prepare division by loading division into X
+        EDIVS           ; Do signed integer division of (Y:D)/(X)->Y remainder: D
+        LDX tmp         ; Load address of divisor variable to receive result (resuse of divisor as it is no longer needed at this point)
+        STY 0, X        ; Store result in divisor (now called result)
     }
 
     return divisor;

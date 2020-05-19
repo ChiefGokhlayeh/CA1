@@ -4,9 +4,9 @@
 #include <hidef.h>
 #include <mc9s12dp256.h>
 
-#define MIN_TEMPERATURE (-3000000L)
+#define MIN_RAW_TEMPERATURE (-3000000L)
 #define VOLT_PER_STEP (50)        // round(u_max / (M - 1))
-#define DEGREE_PER_VOLT (196)     // round((t_max - t_min) / u_max)
+#define DEGREE_PER_VOLT (196)     // ceil((t_max - t_min) / u_max)
 #define CONST_CORRECTION (-12875) // -((error(1023) - error(0)) / 2)
 #define RAW_TO_DECIDEGREE_FACTOR (10000)
 
@@ -14,15 +14,41 @@ static long raw_measurement = 0;
 static long raw_temperature = 0;
 static int temperature = 0;
 
-static int fixed_float_round(int value, int modulus)
+/**
+ * @brief Performs a fixed-decimal-point rounding and division, given a specific
+ * radix. The result is a rounded integer with the fixed-decimal-point removed.
+ *
+ * Example 1:
+ * ```c
+ * int value = 1234567; // think of it as 123.4567
+ * int radix =   10000;
+ * int result = fixed_float_round(value, radix);
+ * assert(result == 123);
+ * ```
+ *
+ * Example 2:
+ * ```c
+ * int value = 987; // think of it as 98.7
+ * int radix =  10;
+ * int result = fixed_float_round(value, radix);
+ * assert(result == 99);
+ * ```
+ *
+ * @param value Fixed-decimal-point value to be rounded.
+ * @param radix Radix in powers of 10.
+ *
+ * @return Rounded integer with the fixed-decimal-point divided out and removed.
+ */
+static int fixed_float_round(int value, int radix)
 {
-    if (value % modulus >= 5)
+    if (value % radix >= 5)
     {
-        value += modulus;
+        value += radix;
     }
-    return value /= modulus;
+    return value /= radix;
 }
 
+/* See header. */
 void thermometer_init(void)
 {
     ATD0CTL2_ADPU = 0x01;  // Enable ADC unit
@@ -44,6 +70,7 @@ void thermometer_init(void)
     ATD1CTL5_Cx = 0x07;   // Select ADC channel 7 (thermometer)
 }
 
+/* See header. */
 void thermometer_take_measurement(void)
 {
     ATD0CTL5 = 0b10000111; // Start next measurement on single channel 7
@@ -52,13 +79,27 @@ void thermometer_take_measurement(void)
         ;
     raw_measurement = ATD0DR0; // Read measurement from ADC data register
 
-    raw_temperature = raw_measurement * VOLT_PER_STEP * DEGREE_PER_VOLT + MIN_TEMPERATURE + CONST_CORRECTION;
+    /* Convert the raw measurement (0-1024) to the intermediate temperature
+     * value range of -3012700 (equivalent to -30.127°C) to +7012700 (equivalent
+     * to +70.127°C). This intermediate value range was chosen to achieve
+     * maximum precision, given the integer nature of the pre-calculated
+     * conversion coefficients VOLT_PER_STEP and DEGREE_PER_VOLT.
+     *
+     * To obtain the final temperature value in °C, rounding and division by
+     * the 10^5 must be performed. */
+    raw_temperature = raw_measurement * VOLT_PER_STEP * DEGREE_PER_VOLT + MIN_RAW_TEMPERATURE + CONST_CORRECTION;
 
+    /* We convert down to deci-°C (10^-1 * 1°C), to be able to store the value
+     * in a simple 16-but value. Doing so requires 32-bit division, which would
+     * normally be handled by libc code. Here we do it ourselves, using the
+     * available hardware instructions */
     temperature = long_divide_int_signed(&raw_temperature, RAW_TO_DECIDEGREE_FACTOR);
 
+    /* Finally we round the value to obtain an acceptable error. */
     temperature = fixed_float_round(temperature, 10);
 }
 
+/* See header. */
 int thermometer_get_measurement(void)
 {
     return temperature;
