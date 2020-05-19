@@ -33,9 +33,11 @@
 #define SHORT_PRESS_SHORT_TICK_COUNT (1)
 #define INFO_TEXT_SWITCH_LONG_TICK_COUNT (10)
 
-#define CHAR_PER_CLOCK_DIGIT (2)
-#define CHAR_PER_DEC (6)
-#define LCD_CHAR_PER_LINE (16)
+#define CLOCK_DIGITS_LENGTH (2)
+#define TEMPERATURE_DIGITS_LENGTH (2)
+#define TEMPERATURE_SIGN_LENGTH (1)
+#define DECIMAL_LENGTH (6)
+#define LCD_LINE_LENGTH (16)
 
 #define IS_BUTTON_ON_COOLDOWN(MASK, FIELD) ((FIELD) & (MASK))
 
@@ -67,8 +69,8 @@ static unsigned int press_start_tick = 0;
 static unsigned char last_button_state = 0;
 static unsigned char button_cooldown_flags = 0;
 
-static char line_buffer[LCD_CHAR_PER_LINE + 1];
-static char dec_buffer[CHAR_PER_DEC];
+static char line_buffer[LCD_LINE_LENGTH + 1];
+static char dec_buffer[DECIMAL_LENGTH];
 
 static enum ui_info_text cur_info_text;
 static unsigned char ticks_info_text_displayed = 0;
@@ -103,23 +105,24 @@ static void update_time_display(void)
     char *cur_pos = &(line_buffer[0]);
 
     dec_to_ascii_wrapper(dec_buffer, clock_get_hours());
-    cur_pos = memcpy(cur_pos, dec_buffer + CHAR_PER_DEC - CHAR_PER_CLOCK_DIGIT, CHAR_PER_CLOCK_DIGIT);
+    cur_pos = memcpy(cur_pos, dec_buffer + DECIMAL_LENGTH - CLOCK_DIGITS_LENGTH, CLOCK_DIGITS_LENGTH);
     *cur_pos = ':';
     cur_pos++;
 
     dec_to_ascii_wrapper(dec_buffer, clock_get_minutes());
-    cur_pos = memcpy(cur_pos, dec_buffer + CHAR_PER_DEC - CHAR_PER_CLOCK_DIGIT, CHAR_PER_CLOCK_DIGIT);
+    cur_pos = memcpy(cur_pos, dec_buffer + DECIMAL_LENGTH - CLOCK_DIGITS_LENGTH, CLOCK_DIGITS_LENGTH);
     *cur_pos = ':';
     cur_pos++;
 
     dec_to_ascii_wrapper(dec_buffer, clock_get_seconds());
-    cur_pos = memcpy(cur_pos, dec_buffer + CHAR_PER_DEC - CHAR_PER_CLOCK_DIGIT, CHAR_PER_CLOCK_DIGIT);
+    cur_pos = memcpy(cur_pos, dec_buffer + DECIMAL_LENGTH - CLOCK_DIGITS_LENGTH, CLOCK_DIGITS_LENGTH);
     *cur_pos = ' ';
     cur_pos++;
 
     temperature = thermometer_get_measurement();
     dec_to_ascii_wrapper(dec_buffer, temperature);
-    cur_pos = memcpy(cur_pos, dec_buffer, CHAR_PER_DEC);
+    cur_pos = memcpy(cur_pos, dec_buffer, TEMPERATURE_SIGN_LENGTH);
+    cur_pos = memcpy(cur_pos, dec_buffer + DECIMAL_LENGTH - TEMPERATURE_DIGITS_LENGTH, TEMPERATURE_DIGITS_LENGTH);
     *cur_pos = 'C';
     cur_pos++;
     *cur_pos = '\0';
