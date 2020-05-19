@@ -39,6 +39,8 @@ void main(void)
 
     for (;;)
     {
+        ui_short_tick();
+
         if (tick_event)
         {
             tick_event = 0;
@@ -47,7 +49,7 @@ void main(void)
 
             clock_tick();
 
-            ui_tick();
+            ui_long_tick();
         }
 
         /* In the simulator it was observed, that holding the button will STALL

@@ -28,15 +28,16 @@
 
 #define BUTTON_PORT (PTH)
 
-#define LONG_PRESS_TICK_COUNT (2)
-#define SHORT_PRESS_TICK_COUNT (0)
-#define INFO_TEXT_SWITCH_TICK_COUNT (10)
+#define LONG_PRESS_SHORT_TICK_COUNT (150)
+#define SHORT_COOLDOWN_SHORT_TICK_COUNT (40)
+#define SHORT_PRESS_SHORT_TICK_COUNT (1)
+#define INFO_TEXT_SWITCH_LONG_TICK_COUNT (10)
 
 #define CHAR_PER_CLOCK_DIGIT (2)
 #define CHAR_PER_DEC (6)
 #define LCD_CHAR_PER_LINE (16)
 
-#define IS_BUTTON_IGNORED(MASK, FIELD) ((FIELD) & (MASK))
+#define IS_BUTTON_ON_COOLDOWN(MASK, FIELD) ((FIELD) & (MASK))
 
 #ifdef SIMULATOR
 #define IS_BUTTON_PRESSED(MASK, FIELD) ((FIELD) & (MASK))
@@ -61,9 +62,10 @@ static const char *GROUP_MEMBERS_TEXT = "Baulig, Janusch";
 
 static enum ui_mode cur_mode;
 
+static unsigned int short_tick_count = 0;
 static unsigned int press_start_tick = 0;
 static unsigned char last_button_state = 0;
-static unsigned char button_ignore_flags = 0;
+static unsigned char button_cooldown_flags = 0;
 
 static char line_buffer[LCD_CHAR_PER_LINE + 1];
 static char dec_buffer[CHAR_PER_DEC];
@@ -181,95 +183,133 @@ unsigned int check_button_press(unsigned char cur_button_state, unsigned char bu
 {
     unsigned int time_pressed;
 
-    if (IS_BUTTON_PRESSED(button, cur_button_state) && !IS_BUTTON_IGNORED(button, button_ignore_flags))
+    if (IS_BUTTON_PRESSED(button, cur_button_state) && !IS_BUTTON_ON_COOLDOWN(button, button_cooldown_flags))
     {
         if (!IS_BUTTON_PRESSED(button, last_button_state))
         {
-            press_start_tick = clock_get_current_tick();
+            press_start_tick = short_tick_count;
         }
-        time_pressed = clock_get_current_tick() - press_start_tick;
+        time_pressed = short_tick_count - press_start_tick;
 
         if (time_pressed > ticks_to_activate)
         {
-            button_ignore_flags |= button;
+            button_cooldown_flags |= button;
             return time_pressed;
         }
     }
 
     if (!IS_BUTTON_PRESSED(button, cur_button_state))
     {
-        button_ignore_flags &= ~button;
+        button_cooldown_flags &= ~button;
     }
 
     return 0;
 }
 
-unsigned int check_button_held(unsigned char cur_button_state, unsigned char button, unsigned int ticks_to_activate)
+unsigned int check_button_held(unsigned char cur_button_state, unsigned char button, unsigned int ticks_to_activate, unsigned int ticks_to_reactivate)
 {
     unsigned int time_pressed;
 
     if (IS_BUTTON_PRESSED(button, cur_button_state))
     {
-        if (!IS_BUTTON_PRESSED(button, last_button_state))
+        if (IS_BUTTON_ON_COOLDOWN(button, button_cooldown_flags))
         {
-            press_start_tick = clock_get_current_tick();
-        }
-        time_pressed = clock_get_current_tick() - press_start_tick;
+            time_pressed = short_tick_count - press_start_tick;
 
-        if (time_pressed > ticks_to_activate)
+            if (time_pressed > ticks_to_reactivate)
+            {
+                press_start_tick = short_tick_count;
+                button_cooldown_flags &= ~button;
+            }
+        }
+        else
         {
-            return time_pressed;
+            if (!IS_BUTTON_PRESSED(button, last_button_state))
+            {
+                press_start_tick = short_tick_count;
+            }
+            time_pressed = short_tick_count - press_start_tick;
+
+            if (time_pressed > ticks_to_activate)
+            {
+                button_cooldown_flags |= button;
+                return time_pressed;
+            }
         }
     }
 
     return 0;
 }
 
-void ui_tick(void)
+void ui_short_tick(void)
 {
-    unsigned char cur_button_state = BUTTON_PORT;
+    unsigned char update_required = 0;
     unsigned int ticks_held = 0;
+    unsigned char cur_button_state = BUTTON_PORT;
+
+    short_tick_count++;
 
     switch (cur_mode)
     {
     case NORMAL_MODE:
-        update_time_display();
-
-        if (check_button_press(cur_button_state, SWITCH_MODE_BUTTON, LONG_PRESS_TICK_COUNT))
+        if (check_button_press(cur_button_state, SWITCH_MODE_BUTTON, LONG_PRESS_SHORT_TICK_COUNT))
         {
             change_mode(SET_MODE);
         }
         break;
     case SET_MODE:
-        update_time_display();
-
-        if (check_button_press(cur_button_state, SWITCH_MODE_BUTTON, SHORT_PRESS_TICK_COUNT))
+        if (check_button_press(cur_button_state, SWITCH_MODE_BUTTON, SHORT_PRESS_SHORT_TICK_COUNT))
         {
             change_mode(NORMAL_MODE);
         }
 
-        ticks_held = check_button_held(cur_button_state, INCREMENT_HOURS_BUTTON, SHORT_PRESS_TICK_COUNT);
+        ticks_held = check_button_held(cur_button_state, INCREMENT_HOURS_BUTTON, SHORT_PRESS_SHORT_TICK_COUNT, SHORT_COOLDOWN_SHORT_TICK_COUNT);
         if (ticks_held)
         {
+            update_required = 1;
             clock_set_hours(clock_get_hours() + 1);
         }
-        ticks_held = check_button_held(cur_button_state, INCREMENT_MINUTES_BUTTON, SHORT_PRESS_TICK_COUNT);
+        ticks_held = check_button_held(cur_button_state, INCREMENT_MINUTES_BUTTON, SHORT_PRESS_SHORT_TICK_COUNT, SHORT_COOLDOWN_SHORT_TICK_COUNT);
         if (ticks_held)
         {
+            update_required = 1;
             clock_set_minutes(clock_get_minutes() + 1);
         }
-        ticks_held = check_button_held(cur_button_state, INCREMENT_SECONDS_BUTTON, SHORT_PRESS_TICK_COUNT);
+        ticks_held = check_button_held(cur_button_state, INCREMENT_SECONDS_BUTTON, SHORT_PRESS_SHORT_TICK_COUNT, SHORT_COOLDOWN_SHORT_TICK_COUNT);
         if (ticks_held)
         {
+            update_required = 1;
             clock_set_seconds(clock_get_seconds() + 1);
+        }
+
+        if (update_required)
+        {
+            update_time_display();
         }
         break;
     default:
         break;
     }
 
+    last_button_state = cur_button_state;
+}
+
+void ui_long_tick(void)
+{
+    switch (cur_mode)
+    {
+    case NORMAL_MODE:
+        update_time_display();
+        break;
+    case SET_MODE:
+        update_time_display();
+        break;
+    default:
+        break;
+    }
+
     ticks_info_text_displayed++;
-    if (ticks_info_text_displayed >= INFO_TEXT_SWITCH_TICK_COUNT)
+    if (ticks_info_text_displayed >= INFO_TEXT_SWITCH_LONG_TICK_COUNT)
     {
         switch (cur_info_text)
         {
@@ -288,6 +328,4 @@ void ui_tick(void)
     }
 
     PORTB = PORTB & TOGGLE_LED ? PORTB & ~TOGGLE_LED : PORTB | TOGGLE_LED;
-
-    last_button_state = cur_button_state;
 }
