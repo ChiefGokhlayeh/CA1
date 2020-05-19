@@ -21,6 +21,7 @@
 #define INCREMENT_HOURS_BUTTON (BUTTON3)
 #define INCREMENT_MINUTES_BUTTON (BUTTON2)
 #define INCREMENT_SECONDS_BUTTON (BUTTON1)
+#define SWITCH_US_MODE_BUTTON (BUTTON1)
 #define SWITCH_MODE_BUTTON (BUTTON4)
 
 #define TOGGLE_LED (0x01)
@@ -75,6 +76,8 @@ static char dec_buffer[DECIMAL_LENGTH];
 static enum ui_info_text cur_info_text;
 static unsigned char ticks_info_text_displayed = 0;
 
+static unsigned char us_mode = 0;
+
 static void *memcpy(void *dst, const void *src, unsigned char len)
 {
     for (; len > 0; len--)
@@ -104,7 +107,31 @@ static void update_time_display(void)
     int temperature = 0;
     char *cur_pos = &(line_buffer[0]);
 
-    dec_to_ascii_wrapper(dec_buffer, clock_get_hours());
+    unsigned char hours = clock_get_hours();
+    unsigned char pm = 0;
+    if (us_mode)
+    {
+        if (hours >= 12)
+        {
+            if (hours > 12)
+            {
+                int tmp = hours;
+                hours = (unsigned char)(tmp % 12);
+            }
+            pm = 1;
+        }
+        else
+        {
+            pm = 0;
+
+            if (hours == 0)
+            {
+                hours = 12;
+            }
+        }
+    }
+
+    dec_to_ascii_wrapper(dec_buffer, hours);
     cur_pos = memcpy(cur_pos, dec_buffer + DECIMAL_LENGTH - CLOCK_DIGITS_LENGTH, CLOCK_DIGITS_LENGTH);
     *cur_pos = ':';
     cur_pos++;
@@ -118,6 +145,18 @@ static void update_time_display(void)
     cur_pos = memcpy(cur_pos, dec_buffer + DECIMAL_LENGTH - CLOCK_DIGITS_LENGTH, CLOCK_DIGITS_LENGTH);
     *cur_pos = ' ';
     cur_pos++;
+
+    if (us_mode)
+    {
+        if (pm)
+        {
+            cur_pos = memcpy(cur_pos, "pm ", 3);
+        }
+        else
+        {
+            cur_pos = memcpy(cur_pos, "am ", 3);
+        }
+    }
 
     temperature = thermometer_get_measurement();
     dec_to_ascii_wrapper(dec_buffer, temperature);
@@ -258,6 +297,10 @@ void ui_short_tick(void)
         if (check_button_press(cur_button_state, SWITCH_MODE_BUTTON, LONG_PRESS_SHORT_TICK_COUNT))
         {
             change_mode(SET_MODE);
+        }
+        if (check_button_press(cur_button_state, SWITCH_US_MODE_BUTTON, SHORT_PRESS_SHORT_TICK_COUNT))
+        {
+            us_mode = !us_mode;
         }
         break;
     case SET_MODE:
