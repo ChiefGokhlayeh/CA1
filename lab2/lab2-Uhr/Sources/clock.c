@@ -81,13 +81,13 @@ void clock_tick(void)
 
     if (enabled)
     {
-        seconds = (seconds + 1) % SECONDS_PER_MINUTE;
+        seconds = (unsigned char)((seconds + 1) % SECONDS_PER_MINUTE);
         if (!seconds)
         {
-            minutes = (minutes + 1) % MINUTES_PER_HOUR;
+            minutes = (unsigned char)((minutes + 1) % MINUTES_PER_HOUR);
             if (!minutes)
             {
-                hours = (hours + 1) % HOURS_PER_DAY;
+                hours = (unsigned char)((hours + 1) % HOURS_PER_DAY);
             }
         }
     }
