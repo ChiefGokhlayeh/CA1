@@ -1,16 +1,27 @@
 #include "thermometer.h"
+#include "wrapper.h"
 
 #include <hidef.h>
 #include <mc9s12dp256.h>
 
-#define MIN_TEMPERATURE (-3000)
-#define DECIVOLT_PER_STEP (5)   // round(u_max / (M - 1))
-#define DEGREE_PER_DECIVOLT (2) // round((t_max - t_min) / u_max)
-#define CONST_CORRECTION (-115) // -((error(1023) - error(0)) / 2)
+#define MIN_TEMPERATURE (-3000000L)
+#define VOLT_PER_STEP (50)        // round(u_max / (M - 1))
+#define DEGREE_PER_VOLT (196)     // round((t_max - t_min) / u_max)
+#define CONST_CORRECTION (-12875) // -((error(1023) - error(0)) / 2)
+#define RAW_TO_DECIDEGREE_FACTOR (10000)
 
-static unsigned int raw_measurement = 0;
+static long raw_measurement = 0;
+static long raw_temperature = 0;
+static int temperature = 0;
 
-static int temperature_centidegree = 0;
+static int fixed_float_round(int value, int modulus)
+{
+    if (value % modulus >= 5)
+    {
+        value += modulus;
+    }
+    return value /= modulus;
+}
 
 void thermometer_init(void)
 {
@@ -41,10 +52,14 @@ void thermometer_take_measurement(void)
         ;
     raw_measurement = ATD0DR0; // Read measurement from ADC data register
 
-    temperature_centidegree = raw_measurement * DECIVOLT_PER_STEP * DEGREE_PER_DECIVOLT + MIN_TEMPERATURE + CONST_CORRECTION;
+    raw_temperature = raw_measurement * VOLT_PER_STEP * DEGREE_PER_VOLT + MIN_TEMPERATURE + CONST_CORRECTION;
+
+    temperature = long_divide_int_signed(&raw_temperature, RAW_TO_DECIDEGREE_FACTOR);
+
+    temperature = fixed_float_round(temperature, 10);
 }
 
 int thermometer_get_measurement(void)
 {
-    return temperature_centidegree;
+    return temperature;
 }

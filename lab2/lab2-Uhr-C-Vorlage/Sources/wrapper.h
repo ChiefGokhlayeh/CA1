@@ -25,6 +25,7 @@ void init_ticker(void);
 
 // Prototypes and wrapper functions for miscellanous instructions
 void wait_for_interrupt(void);
+int long_divide_int_signed(long *dividend, int divisor);
 
 // Note: init_lcd, init_ticker and delay_10ms can be called directly without
 //       wrappers, as they don't have parameters and return values.
