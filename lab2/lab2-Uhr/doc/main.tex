@@ -1,0 +1,46 @@
+\documentclass[12pt,a4paper,hidelinks,english]{report}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{caption}
+\captionsetup{justification=centering,font=footnotesize}
+\usepackage[nooldvoltagedirection]{circuitikz}
+\usepackage[english]{babel}
+\usepackage[style=alphabetic]{biblatex}
+\addbibresource{references.bib}
+\usepackage{graphicx}
+\graphicspath{{images/}}
+\usepackage{hyperref}
+\usepackage{pgfplots}
+\pgfplotsset{width=9cm,compat=1.17}
+\usepackage{pythontex}
+\setpythontexoutputdir{.}
+\usepackage[english=american]{csquotes}
+\usepackage[binary-units=true]{siunitx}
+\sisetup{locale = US}
+\usepackage{tabularx}
+\usepackage{tocbibind}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhead{}
+\fancyhead{\leftmark}
+\fancyfoot{}
+\fancyfoot{\thepage}
+\setlength{\headheight}{15pt}
+\renewcommand{\chaptermark}[1]{\markboth{\chaptername{} \ \thechapter.\ #1}{}}
+\usepackage{tikz}
+
+\title{Developer Manual: Digital Clock \\
+\large for Computer Architecture Course at University of Esslingen}
+\author{Andreas Baulig \and Jakob Janusch}
+\date{May 2020}
+
+\begin{document}
+
+\maketitle{}
+
+\tableofcontents
+
+\include{chapters/introduction}
+
+\end{document}

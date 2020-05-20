@@ -4,3 +4,4 @@
 *.map
 *.old
 .vscode/
+**/build/
