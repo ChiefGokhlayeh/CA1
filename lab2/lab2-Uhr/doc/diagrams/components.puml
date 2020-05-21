@@ -1,0 +1,49 @@
+@startuml
+
+title Digital Clock with Temperature Display
+footer (C) 2020 Andreas Baulig
+
+component [User Interface] as ui
+component [Thermometer] as thermo
+component [Clock] as clock
+component [Main Loop] as main
+component [Wrapper] as wrapper
+
+() "Short Tick" as ui_short_tick
+() "Long Tick" as ui_long_tick
+
+() "Tick" as clock_tick
+() "Current Time" as clock_time
+
+() "Take Measurement" as thermo_measure
+() "Get Last Measurement" as thermo_last_measurement
+
+() "Format Decimal Integer" as wrapper_dectoascii
+() "LCD" as wrapper_lcd
+() "Tick Generator" as wrapper_tick_generator
+
+ui .up. ui_short_tick
+ui .up. ui_long_tick
+
+clock .up. clock_tick
+clock .up. clock_time
+
+thermo .up. thermo_measure
+thermo .up. thermo_last_measurement
+
+wrapper .up. wrapper_dectoascii
+wrapper .up. wrapper_lcd
+wrapper .up. wrapper_tick_generator
+
+main --> wrapper_tick_generator
+main --> ui_short_tick
+main --> ui_long_tick
+main --> clock_tick
+main --> thermo_measure
+
+ui --> clock_time
+ui --> thermo_last_measurement
+ui --> wrapper_lcd
+ui --> wrapper_dectoascii
+
+@enduml
