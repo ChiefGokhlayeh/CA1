@@ -1,0 +1,61 @@
+% !TeX root = ../main.tex
+\chapter{Thermometer}
+
+\section{Objectives}
+
+\begin{itemize}
+    \item Take measurements of ADC and convert to value range of \SIrange[range-units=single]{-30}{+70}{\degreeCelsius}.
+          \begin{itemize}
+              \item Resolution of \SI{1}{\degreeCelsius}.
+          \end{itemize}
+    \item Store last measurement in memory.
+\end{itemize}
+
+\section{Interface}
+
+\begin{itemize}
+    \item Initialize
+          \begin{itemize}
+              \item Configure ADC peripheral.
+          \end{itemize}
+    \item Take temperature measurement.
+    \item Get last temperature measurement.
+\end{itemize}
+
+\section{Details}
+
+\subsection{Reading the ADC}
+
+Reading of the ADC peripheral is done \emph{blocking}, meaning the execution flow is actively stalled until the ADC value is ready (active waiting). While from a power consumption perspective this is not preferable, it is much easier to implement and given the context of this application, completely appropriate. Note that stalling the execution flow could have side-effects on other tasks/threads, if there were any.
+
+The value obtained from the ADC is a \SI{10}{\bit} unsigned integer value, representing \SIrange[range-units=single]{0}{5.12}{\volt}. This means every step of the ADC sample value represents approximately \SI{5}{\milli\volt} (refer to equation~\ref{equ:volts_per_sample}).
+
+\begin{equation}\label{equ:volts_per_sample}
+    \begin{split}
+        u_{max} & = \SI{5.12}{\volt} \\
+        M & = 2^{10} = 1024 \\
+        u_{s}(x) & = x * \frac{u_{max}}{M - 1} \\
+        u_{s}(1) & = 1 * \frac{\SI{5.12}{\volt}}{1024 - 1} \approx \SI{5.005}{\milli\volt}
+    \end{split}
+\end{equation}
+
+\subsection{Temperature Conversion}
+
+To convert this value of voltage into a temperature, a linear progression of the voltage-temperature curve is assumed. This of course is a potential source of error, as real PT100 and PT1000 sensors are not entirely linear. Given the value as a voltage we can convert to temperature as shown in equation~\ref{equ:degrees_per_volt}.
+
+\begin{equation}\label{equ:degrees_per_volt}
+    \begin{split}
+        \nu(s) = u_{s} * \frac{t_{max} - t_{min}}{u_{max}} - t_{min}
+    \end{split}
+\end{equation}
+
+Combining both equations into one allows us to simplify the expression, as shown in equation~\ref{equ:degrees_per_sample}. Note that because we map the full voltage range to temperature, the equation does not rely on \(u_{max}\).
+
+\begin{equation}\label{equ:degrees_per_sample}
+    \begin{split}
+        \nu(x) & = x * \frac{\cancel{u_{max}}}{M - 1} * \frac{t_{max} - t_{min}}{\cancel{u_{max}}} - t_{min} \\
+        & = x * \frac{t_{max} - t_{min}}{M - 1} - t_{min} \\
+    \end{split}
+\end{equation}
+
+Finally suitable values for \(t_{max}\) and \(t_{min}\) must be chosen, to avoid rounding errors. The implementation inside Thermometer uses a factor of \num{10} (values \numrange{-300}{700}), meaning the resulting temperature is given in \si{\deci\degreeCelsius} (deci-degree-Celcius). Then, using the additional tenth-digit, is rounded to \si{\degreeCelsius}. The use of a factor of \num{10} has the side-effect of raising the intermediate values above the \SI{16}{\bit} limit, resulting in a potential overflow. To avoid this \SI{32}{\bit} signed integers are used to perform the conversion. Due to the lack of a libc to do \SI{32}{\bit} division, we rely on a self-implemented wrapper for the \texttt{EDIVS} HCS12 instruction. This is needed to divide the intermediate value by \(M - 1\) and obtain a value within the limits of a \SI{16}{\bit} signed integer.
