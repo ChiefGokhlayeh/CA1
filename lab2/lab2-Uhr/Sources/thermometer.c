@@ -4,11 +4,10 @@
 #include <hidef.h>
 #include <mc9s12dp256.h>
 
-#define MIN_RAW_TEMPERATURE (-3000000L)
-#define VOLT_PER_STEP (50)        // round(u_max / (M - 1))
-#define DEGREE_PER_VOLT (196)     // ceil((t_max - t_min) / u_max)
-#define CONST_CORRECTION (-12875) // -((error(1023) - error(0)) / 2)
-#define RAW_TO_DECIDEGREE_FACTOR (10000)
+#define MAX_TEMPERATURE_DECIDEGREE (700)
+#define MIN_TEMPERATURE_DECIDEGREE (-300)
+#define RAW_TO_DECIDEGREE_FACTOR ((1 << 10) - 1)
+#define DECIDEGREE_TO_DEGREE (10)
 
 static long raw_measurement = 0;
 static long raw_temperature = 0;
@@ -80,23 +79,22 @@ void thermometer_take_measurement(void)
     raw_measurement = ATD0DR0; // Read measurement from ADC data register
 
     /* Convert the raw measurement (0-1024) to the intermediate temperature
-     * value range of -3012700 (equivalent to -30.127°C) to +7012700 (equivalent
-     * to +70.127°C). This intermediate value range was chosen to achieve
-     * maximum precision, given the integer nature of the pre-calculated
-     * conversion coefficients VOLT_PER_STEP and DEGREE_PER_VOLT.
+     * value range of -300 (equivalent to -30°C) to +700 (equivalent
+     * to +70°C). This intermediate value range was chosen to achieve
+     * maximum precision.
      *
      * To obtain the final temperature value in °C, rounding and division by
-     * the 10^5 must be performed. */
-    raw_temperature = raw_measurement * VOLT_PER_STEP * DEGREE_PER_VOLT + MIN_RAW_TEMPERATURE + CONST_CORRECTION;
+     * the 10 must be performed. */
+    raw_temperature = raw_measurement * (MAX_TEMPERATURE_DECIDEGREE - MIN_TEMPERATURE_DECIDEGREE);
 
     /* We convert down to deci-°C (10^-1 * 1°C), to be able to store the value
-     * in a simple 16-but value. Doing so requires 32-bit division, which would
+     * in a simple 16-bit value. Doing so requires 32-bit division, which would
      * normally be handled by libc code. Here we do it ourselves, using the
      * available hardware instructions */
-    temperature = long_divide_int_signed(&raw_temperature, RAW_TO_DECIDEGREE_FACTOR);
+    temperature = long_divide_int_signed(&raw_temperature, RAW_TO_DECIDEGREE_FACTOR) - MIN_TEMPERATURE_DECIDEGREE;
 
     /* Finally we round the value to obtain an acceptable error. */
-    temperature = fixed_float_round(temperature, 10);
+    temperature = fixed_float_round(temperature, DECIDEGREE_TO_DEGREE);
 }
 
 /* See header. */
