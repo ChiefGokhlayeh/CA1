@@ -6,7 +6,6 @@
 #define MINUTES_PER_HOUR (60)
 #define HOURS_PER_DAY (24)
 
-static unsigned int tick_count = 0;
 static unsigned char enabled = 0;
 
 static unsigned char hours = 0;
@@ -37,27 +36,22 @@ unsigned char clock_enabled(void)
     return enabled;
 }
 
-unsigned int clock_get_current_tick(void)
-{
-    return tick_count;
-}
-
 void clock_set_hours(unsigned char h)
 {
     unsigned int tmp = h;
-    hours = (unsigned char) (tmp % HOURS_PER_DAY);
+    hours = (unsigned char)(tmp % HOURS_PER_DAY);
 }
 
 void clock_set_minutes(unsigned char m)
 {
     unsigned int tmp = m;
-    minutes = (unsigned char) (tmp % MINUTES_PER_HOUR);
+    minutes = (unsigned char)(tmp % MINUTES_PER_HOUR);
 }
 
 void clock_set_seconds(unsigned char s)
 {
     unsigned int tmp = s;
-    seconds = (unsigned char) (tmp % SECONDS_PER_MINUTE);
+    seconds = (unsigned char)(tmp % SECONDS_PER_MINUTE);
 }
 
 unsigned char clock_get_hours(void)
@@ -77,8 +71,6 @@ unsigned char clock_get_seconds(void)
 
 void clock_tick(void)
 {
-    tick_count++;
-
     if (enabled)
     {
         seconds = (unsigned char)((seconds + 1) % SECONDS_PER_MINUTE);

@@ -11,8 +11,6 @@ void clock_disable(void);
 
 unsigned char clock_enabled(void);
 
-unsigned int clock_get_current_tick(void);
-
 void clock_set_hours(unsigned char h);
 
 void clock_set_minutes(unsigned char m);
