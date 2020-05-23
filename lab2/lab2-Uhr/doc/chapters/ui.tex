@@ -1,0 +1,196 @@
+% !TeX root = ../main.tex
+\chapter{User Interface}
+
+\section{Objectives}
+
+\begin{itemize}
+    \item Control LCD output of current time, temperature and info text.
+    \item Poll button press and held events.
+    \item Switch operating mode depending on button events and current state information.
+    \item Drive LEDs depending on current state information.
+\end{itemize}
+
+\section{Interface}
+
+\begin{itemize}
+    \item Initialize
+          \begin{itemize}
+              \item Initialize the state information and required sub-modules, such as the LCD driver, LED and push-button pin-modes.
+          \end{itemize}
+    \item Short Tick (\(f_{S}=\SI{100}{\hertz}\))
+          \begin{itemize}
+              \item Debounce push buttons.
+              \item Recognize press and held events depending on current operating mode.
+          \end{itemize}
+    \item Long Tick (\(f_{L}=\SI{1}{\hertz}\))
+          \begin{itemize}
+              \item Update time and temperature display on LCD.
+              \item Toggle LED 0 with each tick.
+              \item Subdivide Long Tick further to switch info text display every \SI{5}{\second}.
+          \end{itemize}
+\end{itemize}
+
+\section{Details}
+
+\subsection{Short Tick vs. Long Tick}
+
+The use of Short Tick to control button handing versus Long Tick is based on the need for low latency press and held event detection. Polling button states on Long Tick would increase latency to up to \SI{1}{\second}, before the press is even detected. Held events could subsequently also only be detected on increments of \SI{1}{\second}, leading to an overall sluggish interaction/feedback cycle.
+
+With a frequency of \SI{100}{\hertz}, Short Tick provides a good time-basis to perform acceptable in-software button debouncing, while maintaining high reactance to even very short user inputs.
+
+To avoid confusion, tick counters are marked either by naming or in-code Doxygen documentation, as to which tick domain they belong to.
+
+\subsection{Button Events}
+
+Button states are checked on every Short Tick. Which specific buttons are checked, depends on the current operating mode. Button events can be categorized either as press or held events. The method of detecting the \emph{start-of-event} is the same for both categories, and involves comparing the current button state to the state from the last tick. If the button state switched from released to pushed, that tick is saved as start-of-event.
+
+\subsubsection{Press Events}
+
+A \emph{press} is detected, if the button is pushed and held for a specified number of ticks, called \texttt{ticks\_to\_activate}. The corresponding event is raised once, and the button is put on \emph{cool-down}. In this state, no further press events will be raised for this button. Cool-down ends when the button is released again, enabling the user to perform the next press event.
+
+Figure~\ref{fig:press_events} an exemplary snipped from an impulse diagram. In the shown graph \(\texttt{ticks\_to\_activate} = 1\), resulting in button pushes shorter than that to be ignored. If the button is held down longer than \texttt{ticks\_to\_activate}, a single pressed event is raised.
+
+\begin{figure}
+    \centering
+
+    \begin{tikzpicture}
+        \draw [very thin] (-0.1,0) -- (0,0) (-0.1,1) -- (0,1);
+        \foreach \x in {0,...,9}
+            {
+                \draw [very thin] (\x,-0.1) -- (\x,0);
+                \path [name path=ticks\x] (\x,0) -- (\x,1);
+            }
+
+        \draw [->] (0,0) -- (10,0) node [anchor=north west] {ticks};
+        \draw (0,0) -- (0,1) node [anchor=east,at end] {released} node [anchor=east,at start] {pushed};
+
+        \draw [name path=button,green] (0,1) -- (0.8,1) -- (0.8,0) -- (0.87,0) -- (0.87,1) -- (0.95,1) -- (0.95,0) -- (1.3,0) -- (1.3,1) -- (3.3,1) -- (3.3,0) -- (3.4,0) -- (3.4,1) -- (3.44,1) -- (3.44,0) -- (3.5,0) -- (3.5,1) -- (3.55,1) -- (3.55,0) -- (7.2,0) -- (7.2,1) -- (7.24,1) -- (7.24,0) -- (7.3,0) -- (7.3,1) -- (10,1);
+
+
+        \newcounter{tickspushedpress}
+
+        \foreach \x in {0,...,9}
+            {
+                \fill [opacity=0.7, name intersections={of=button and ticks\x,by=curr}]
+                (curr) circle (0.075)
+                let \p1=(curr) in \pgfextra{
+                    \ifthenelse{1>\y1}{
+                        \stepcounter{tickspushedpress}
+                        \ifthenelse{\thetickspushedpress<2}{
+                            \def\intersectcolor{red}
+                        }{
+                            \ifthenelse{\thetickspushedpress=2}{
+                                \def\intersectcolor{violet}
+                            }{
+                                \def\intersectcolor{blue}
+                            }
+                        }
+                    }{
+                        \setcounter{tickspushedpress}{0}
+                        \def\intersectcolor{gray}
+                    }
+                } [color=\intersectcolor];
+            }
+
+        \coordinate (top) at (0,1);
+        \matrix [matrix of nodes,draw,above right=0.5 and 0 of top,column sep=0.3cm]
+        {
+            \fill [color=gray] (0,0) circle (0.075) node [xshift=0.1cm,color=black,anchor=west] {Reset}; &
+            \fill [color=red] (0,0) circle (0.075) node [xshift=0.1cm,color=black,anchor=west] {Debounce}; &
+            \fill [color=violet] (0,0) circle (0.075) node [xshift=0.1cm,color=black,anchor=west] {Pressed}; &
+            \fill [color=blue] (0,0) circle (0.075) node [xshift=0.1cm,color=black,anchor=west] {Cool-down};   \\
+        };
+
+    \end{tikzpicture}
+    \caption{Press Events}\label{fig:press_events}
+\end{figure}
+
+\subsubsection{Held Events}\label{sec:held_events}
+
+Similar to press events, \emph{held} events also involve a minimum specified number of ticks to activate, called \texttt{ticks\_to\_activate}. After first activation, the button is put on \emph{cool-down}. Conversely to \emph{press} events however, cool-down ends after a second specified number of ticks have passed since activation, called \texttt{ticks\_to\_reactivate}. The time of last activation is then updated to the current tick count and a new reactivation timeout begins. This process continues as long as the button is being pushed down. The frequency of held events can be controlled through \texttt{ticks\_to\_reactivate}, while \texttt{ticks\_to\_activate} controls how long the button has to be pushed initially before the first held event is raised.
+
+The example in figure~\ref{fig:held_events} shows a set up with \(\texttt{ticks\_to\_activate} = 2\) and \(\texttt{\_reactivate} = 1\). It can be seen, that the initial held event is delayed. Subsequent held events on the other hand, are fired in shorter intervals.
+
+\begin{figure}
+    \centering
+
+    \begin{tikzpicture}
+        \draw [very thin] (-0.1,0) -- (0,0) (-0.1,1) -- (0,1);
+        \foreach \x in {0,...,9}
+            {
+                \draw [very thin] (\x,-0.1) -- (\x,0);
+                \path [name path=ticks\x] (\x,0) -- (\x,1);
+            }
+
+        \draw [->] (0,0) -- (10,0) node [anchor=north west] {ticks};
+        \draw (0,0) -- (0,1) node [anchor=east,at end] {released} node [anchor=east,at start] {pushed};
+
+
+        \draw [name path=button,green] (0,1) -- (0.7,1) -- (0.7,0) -- (0.74,0) -- (0.74,1) -- (0.79,1) -- (0.79,0) -- (0.83,0) -- (0.83,1) -- (0.91,1) -- (0.91,0) -- (7.3,0) -- (7.3,1) -- (7.34,1) -- (7.42,1) -- (7.42,0) -- (7.5,0) -- (7.5,1) -- (10,1);
+
+
+        \newcounter{tickspushedheld}
+        \newcounter{tickspushedcooldown}
+
+        \foreach \x in {0,...,9}
+            {
+                \fill [opacity=0.7, name intersections={of=button and ticks\x,by=curr}]
+                (curr) circle (0.075)
+                let \p1=(curr) in \pgfextra{
+                    \ifthenelse{1>\y1}{
+                        \stepcounter{tickspushedheld}
+                        \ifthenelse{\thetickspushedheld<3}{
+                            \def\intersectcolor{red}
+                        }{
+                            \ifthenelse{\thetickspushedheld=3}{
+                                \def\intersectcolor{violet}
+                            }{
+                                \def\intersectcolor{blue}
+                                \stepcounter{tickspushedcooldown}
+                                \ifthenelse{\thetickspushedcooldown=1}{
+                                    \setcounter{tickspushedheld}{2}
+                                    \setcounter{tickspushedcooldown}{0}
+                                }{}
+                            }
+                        }
+                    }{
+                        \setcounter{tickspushedheld}{0}
+                        \setcounter{tickspushedcooldown}{0}
+                        \def\intersectcolor{gray}
+                    }
+                } [color=\intersectcolor];
+            }
+
+        \coordinate (top) at (0,1);
+        \matrix [matrix of nodes,draw,above right=0.5 and 0 of top,column sep=0.3cm]
+        {
+            \fill [color=gray] (0,0) circle (0.075) node [xshift=0.1cm,color=black,anchor=west] {Reset};  &
+            \fill [color=red] (0,0) circle (0.075) node [xshift=0.1cm,color=black,anchor=west] {Debounce}; &
+            \fill [color=violet] (0,0) circle (0.075) node [xshift=0.1cm,color=black,anchor=west] {Held}; &
+            \fill [color=blue] (0,0) circle (0.075) node [xshift=0.1cm,color=black,anchor=west] {Cool-down};   \\
+        };
+
+    \end{tikzpicture}
+    \caption{Held Events}\label{fig:held_events}
+\end{figure}
+
+\subsection{Modes of Operation}
+
+\subsubsection{NORMAL-Mode}
+
+On boot-up NORMAL-mode is entered. In this mode time and temperature are updated with every Long Tick. Time is obtained from the Clock module, while the value for temperature is taken from the Thermometer's last measured value.
+
+Pressing the \texttt{SWITCH\_MODE\_BUTTON} for more than \texttt{LONG\_PRESS\_SHORT\_TICK\_COUNT}, will result in a switch to SET-Mode.
+
+\subsubsection{SET-Mode}
+
+While in SET-mode, pressing the \texttt{INCREMENT\_SECONDS\_}, \texttt{\_MINUTES\_} or \texttt{\_HOURS\_BUTTON}, will increment the Clock modules current seconds, minutes or hours setting respectively. Note that incrementing these values makes use of the button held events discussed in section~\ref{sec:held_events}, allowing for precise single-step and fast multi-step changes.
+When changing the time, the updated values are displayed immediately. Relying on Long Tick would lead to a perceived high latency when changing time, with multiple increments happening within the same Long Tick.
+
+SET-mode can be exited the same way it was entered, by pressing \texttt{SWITCH\_MODE\_BUTTON} for \texttt{SHORT\_PRESS\_SHORT\_TICK\_COUNT}.
+
+\subsection{Display}
+
+The LCD is split into two lines, the upper one displays the current time and temperature and is updated each Long Tick. The lower one switches between displaying the copyright information and names of the authors. Switching between copyright and names is done every \SI{5}{\second} using a tick counter based on Long Tick. Note that during SET-mode, time is updated immediately upon changing the Clock settings.
+
+With every Long Tick, LED on pin 0 is toggled.
