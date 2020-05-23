@@ -9,8 +9,28 @@ The manual is structured in chapters, each describing an individual module. A mo
 
 \section{Module Overview}\label{sec:module_overview}
 
+Figure \ref{fig:module_overview} depicts a logical component view of the entire application.
+
+Component \emph{Main Loop} sits atop the structure and is responsible for sequencing the application flow. It itself is timed and driven by the \emph{Tick Generator} interface, provided by the \emph{Wrapper} subsystem. The generated tick is at a higher frequency than what is needed for most of the other components, so \emph{Main Loop} divides the incoming \emph{Short Tick} into an additional \emph{Long Tick}.
+
+All user interaction is controlled through the \emph{User Interface} (abbr.\ UI) component. This includes:
+\begin{itemize}
+    \item Buttons
+    \item LCD
+    \item LEDs
+\end{itemize}
+It also controls the operating modes, such as SET-mode and NORMAL-mode.
+
+The UI component requires both, Short and Long Tick, to facilitate all its functions, while all other components work on Long Tick alone.
+
+The overall timekeeping functionality is provided by the \emph{Clock} component. It consumes a Long Tick, that is used to increment the internal seconds, minutes and hours counters. The current time can then be read out through its \emph{Current Time} interface.
+
+Temperature measurements are performed by a dedicated component called \emph{Thermometer}. It enables measurements of the internal ADC, does the necessary conversion and provides the value via \emph{Get Last Measurement}. Taking measurements is also driven by Long Tick, and is done at the start of each new Long Tick update cycle.
+
+Lastly the \emph{Wrapper} subsystem provides miscellaneous interfaces such as driving the LCD and converting \SI{16}{\bit} integers to decimal formatted ASCII strings. These functions are implemented in HCS12 Assembly and do not follow standard C call-convention, which is why wrapping is needed to facilitate safe C/Assembly inter-operation.
+
 \begin{figure}
     \centering
     \includegraphics[width=\textwidth]{generated/components.png}
-    \caption{Module Overview}
+    \caption{Module Overview}\label{fig:module_overview}
 \end{figure}

@@ -23,9 +23,9 @@
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhead{}
-\fancyhead{\leftmark}
+\fancyhead[L]{\leftmark}
 \fancyfoot{}
-\fancyfoot{\thepage}
+\fancyfoot[C]{\thepage}
 \setlength{\headheight}{15pt}
 \renewcommand{\chaptermark}[1]{\markboth{\chaptername{} \ \thechapter.\ #1}{}}
 \usepackage{tikz}
@@ -40,6 +40,8 @@
 \maketitle{}
 
 \tableofcontents
+
+\listoffigures
 
 \include{chapters/introduction}
 
