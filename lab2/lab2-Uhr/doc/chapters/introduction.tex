@@ -29,7 +29,7 @@ Temperature measurements are performed by a dedicated component called \emph{The
 
 Lastly the \emph{Wrapper} subsystem provides miscellaneous interfaces such as driving the LCD and converting \SI{16}{\bit} integers to decimal formatted ASCII strings. These functions are implemented in HCS12 Assembly and do not follow standard C call-convention, which is why wrapping is needed to facilitate safe C/Assembly inter-operation.
 
-\begin{figure}
+\begin{figure}[ht]
     \centering
     \includegraphics[width=\textwidth]{generated/components.png}
     \caption{Module Overview}\label{fig:module_overview}

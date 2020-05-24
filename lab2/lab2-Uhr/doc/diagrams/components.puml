@@ -21,6 +21,7 @@ component [Wrapper] <<subsystem>> as wrapper
 () "Format Decimal Integer" as wrapper_dectoascii
 () "LCD" as wrapper_lcd
 () "Tick Generator" as wrapper_tick_generator
+() "Long Divide by Integer" as wrapper_long_divide_by_integer
 
 ui #-up- ui_short_tick
 ui #-up- ui_long_tick
@@ -34,6 +35,7 @@ thermo #-up- thermo_last_measurement
 wrapper #-up- wrapper_dectoascii
 wrapper #-up- wrapper_lcd
 wrapper #-up- wrapper_tick_generator
+wrapper #-up- wrapper_long_divide_by_integer
 
 main --( wrapper_tick_generator
 main --( ui_short_tick
@@ -45,5 +47,7 @@ ui --( clock_time
 ui --( thermo_last_measurement
 ui --( wrapper_lcd
 ui --( wrapper_dectoascii
+
+thermo --( wrapper_long_divide_by_integer
 
 @enduml
