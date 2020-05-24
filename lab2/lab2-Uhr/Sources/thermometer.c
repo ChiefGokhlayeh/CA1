@@ -91,7 +91,7 @@ void thermometer_take_measurement(void)
      * in a simple 16-bit value. Doing so requires 32-bit division, which would
      * normally be handled by libc code. Here we do it ourselves, using the
      * available hardware instructions */
-    temperature = long_divide_int_signed(&raw_temperature, RAW_TO_DECIDEGREE_FACTOR) - MIN_TEMPERATURE_DECIDEGREE;
+    temperature = long_divide_int_signed(&raw_temperature, RAW_TO_DECIDEGREE_FACTOR) + MIN_TEMPERATURE_DECIDEGREE;
 
     /* Finally we round the value to obtain an acceptable error. */
     temperature = fixed_float_round(temperature, DECIDEGREE_TO_DEGREE);
