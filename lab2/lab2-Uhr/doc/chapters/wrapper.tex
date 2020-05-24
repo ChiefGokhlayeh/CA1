@@ -1,0 +1,47 @@
+% !TeX root = ../main.tex
+\chapter{Wrapper}
+
+\section{Objectives}
+
+\begin{itemize}
+    \item Enable C/Assembly inter-operation by adapting C code to Assembly calling convention.
+    \item Provide specialized HCS12 instructions as C-callable functions.
+\end{itemize}
+
+\section{Interface}
+
+\begin{itemize}
+    \item Convert signed integer to padded right-aligned C-string in decimal format, given pre-allocated char buffer.
+    \item Initialize LCD driver and hardware.
+    \item Delay execution flow by \SI{10}{\milli\second}.
+    \item Write char buffer onto specified line of the LCD.
+    \item Initialize the Tick Generator.
+    \item Wait for interrupts.
+    \item Divide \SI{32}{\bit} signed integer by \SI{16}{\bit} signed integer.
+\end{itemize}
+
+\section{Details}
+
+\subsection{Decimal to ASCII}
+
+The Assembly routine implementing the decimal to ASCII conversion was written to the specifications of a previous project. The code was imported as is, and therefore has some quirks that a clean new implementation would address.
+
+Specifically the padded right-aligned nature of the output string is rather counterproductive. As the application nowhere requires such an alignment, it instead has to work around it.
+
+One could either do this by stepping through the string left to right and searching for the first non-zero ASCII character (\texttt{0x31} to \texttt{0x39}), then copy all remaining bytes right to left up to the current position. The sign character is always the first byte of the string (`\texttt{~}' for positive and `\texttt{-}' for negative integers), so it can be easily retrieved.
+
+In practice however, in currently all places it is used, the number of digits in the decimal string are known beforehand. It is therefore possible to simply copy the desired digits into a secondary buffer and continue with that.
+
+\subsection{Delay}
+
+The \SI{10}{\ms} delay routine used inside the LCD driver could be used to implement timed polling of the buttons. In its current state however, the application uses the Short Tick instead, making the delay routine obsolete (it's still required inside the LCD driver).
+
+\subsection{Tick Generator}
+
+The Tick Generator, responsible for generating both Short and Long Ticks, is implemented using the Enhanced Capture Timer (ECT) channel 4. The timer is configured in Output Compare mode with a pre-scale factor of \(2^{7} = 128\). Applied to the \(f_{BUSCLK}\) of \SI{24}{\mega\hertz} this results in a counter frequency of \SI{187.5}{\kilo\hertz}. To generate Short Tick, the timer compare register (\texttt{TC4}) is incremented in steps of \num{1875}. This results in a \SI{10}{\milli\second} period for Short Tick. Long Tick is then generated using a software divider, by counting up \num{100} Short Ticks before triggering one Long Tick.
+
+\subsection{Wait for Interrupt}
+
+HCS12 micro-controllers offer a instruction (\texttt{WAI}) which halts the CPU and automatically wakes up again, once an interrupt is registered. This was primarily used as a work-around for what seems to be a limitation of the CodeWarrior HCS12 Simulator. If Main Loop was allowed to continuously run, no interrupts would be executed in the Simulator. This would not happen on real hardware, as interrupts always take priority over normal execution flow (provided they are not masked, which in this case they aren't).
+
+Using \texttt{WAI} has the added benefit of potentially saving power, by reducing switching of transistors. Modern micro-controllers would be able to benefit from this approach even more; powering down certain parts of the micro-controller, saving power and reducing heat output.
