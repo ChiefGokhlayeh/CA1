@@ -9,9 +9,9 @@ The manual is structured in chapters, each describing an individual module. A mo
 
 \section{Module Overview}\label{sec:module_overview}
 
-Figure \ref{fig:module_overview} depicts a logical component view of the entire application.
+Figure~\ref{fig:module_overview} depicts a logical component view of the entire application.
 
-Component \emph{Main Loop} sits atop the structure and is responsible for sequencing the application flow. It itself is timed and driven by the \emph{Tick Generator} interface, provided by the \emph{Wrapper} subsystem. The generated tick is at a higher frequency than what is needed for most of the other components, so \emph{Main Loop} divides the incoming \emph{Short Tick} into an additional \emph{Long Tick}.
+Component \emph{Main Loop} sits atop the structure and is responsible for sequencing the application flow. It itself is timed and driven by the \emph{Tick Generator} interface, provided by the \emph{Wrapper} subsystem. Tick Generator provides two different ticks, one based on a \SI{1}{\second} period called \emph{Long Tick} and a secondary \emph{Short Tick} based on a \SI{10}{\milli\second} period.
 
 All user interaction is controlled through the \emph{User Interface} (abbr.\ UI) component. This includes:
 \begin{itemize}
@@ -21,7 +21,7 @@ All user interaction is controlled through the \emph{User Interface} (abbr.\ UI)
 \end{itemize}
 It also controls the operating modes, such as SET-mode and NORMAL-mode.
 
-The UI component requires both, Short and Long Tick, to facilitate all its functions, while all other components work on Long Tick alone.
+The UI component requires both, Short and Long Tick to facilitate all its functions, while all other components work on Long Tick alone.
 
 The overall timekeeping functionality is provided by the \emph{Clock} component. It consumes a Long Tick, that is used to increment the internal seconds, minutes and hours counters. The current time can then be read out through its \emph{Current Time} interface.
 

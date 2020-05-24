@@ -48,7 +48,7 @@ Button states are checked on every Short Tick. Which specific buttons are checke
 
 A \emph{press} is detected, if the button is pushed and held for a specified number of ticks, called \texttt{ticks\_to\_activate}. The corresponding event is raised once, and the button is put on \emph{cool-down}. In this state, no further press events will be raised for this button. Cool-down ends when the button is released again, enabling the user to perform the next press event.
 
-Figure~\ref{fig:press_events} an exemplary snipped from an impulse diagram. In the shown graph \(\texttt{ticks\_to\_activate} = 1\), resulting in button pushes shorter than that to be ignored. If the button is held down longer than \texttt{ticks\_to\_activate}, a single pressed event is raised.
+Figure~\ref{fig:press_events} shows an exemplary snippet from an impulse diagram. In the shown graph \(\texttt{ticks\_to\_activate} = 1\), resulting in button pushes shorter than that to be ignored. If the button is held down longer than \texttt{ticks\_to\_activate}, a single pressed event is raised.
 
 \begin{figure}
     \centering
@@ -109,7 +109,7 @@ Figure~\ref{fig:press_events} an exemplary snipped from an impulse diagram. In t
 
 Similar to press events, \emph{held} events also involve a minimum specified number of ticks to activate, called \texttt{ticks\_to\_activate}. After first activation, the button is put on \emph{cool-down}. Conversely to \emph{press} events however, cool-down ends after a second specified number of ticks have passed since activation, called \texttt{ticks\_to\_reactivate}. The time of last activation is then updated to the current tick count and a new reactivation timeout begins. This process continues as long as the button is being pushed down. The frequency of held events can be controlled through \texttt{ticks\_to\_reactivate}, while \texttt{ticks\_to\_activate} controls how long the button has to be pushed initially before the first held event is raised.
 
-The example in figure~\ref{fig:held_events} shows a set up with \(\texttt{ticks\_to\_activate} = 2\) and \(\texttt{\_reactivate} = 1\). It can be seen, that the initial held event is delayed. Subsequent held events on the other hand, are fired in shorter intervals.
+The example in figure~\ref{fig:held_events} shows a setup where \(\texttt{ticks\_to\_activate} = 2\) and \linebreak[4] \(\texttt{ticks\_to\_reactivate} = 1\). It can be seen, that the initial held event is delayed. Subsequent held events on the other hand, are fired in shorter intervals.
 
 \begin{figure}
     \centering

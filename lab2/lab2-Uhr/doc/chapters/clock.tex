@@ -25,7 +25,7 @@
 
 \subsection{Storing of Time}
 
-The current time is stored in hours, minutes and seconds, each allocated their own \SI{8}{\bit} value, with valid range of \numrange{0}{59} (for seconds and minutes) and \numrange{0}{23} (for hours). Whenever one of these fields is written to, the value is first run through the modulo operation with the modulus set to the fields maximum value plus one (\num{60} for seconds and minutes and \num{24} for hours). This ensures the fields are always in a valid range, even if the value is set from outside the module.
+The current time is stored in hours, minutes and seconds, each allocated their own \SI{8}{\bit} value, with valid range of \numrange{0}{59} (for seconds and minutes) and \numrange{0}{23} (for hours). Whenever one of these fields is written to, the value is first run through the modulo operation with the modulus set to the fields maximum value plus one (\num{60} for seconds and minutes and \num{24} for hours). This ensures the fields are always within their valid range, even if the value is set from outside the module.
 
 During auto-increment, each field is checked for overflows, i.e.\ wrap around after the maximum valid value, with the new value being \num{0}. If an overflow is detected in the seconds field, minutes get incremented by one. If minutes then also overflow, hours are incremented.
 
