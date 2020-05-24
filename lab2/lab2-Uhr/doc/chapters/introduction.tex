@@ -27,7 +27,7 @@ The overall timekeeping functionality is provided by the \emph{Clock} component.
 
 Temperature measurements are performed by a dedicated component called \emph{Thermometer}. It enables measurements of the internal ADC, does the necessary conversion and provides the value via \emph{Get Last Measurement}. Taking measurements is also driven by Long Tick, and is done at the start of each new Long Tick update cycle.
 
-Lastly the \emph{Wrapper} subsystem provides miscellaneous interfaces such as driving the LCD and converting \SI{16}{\bit} integers to decimal formatted ASCII strings. These functions are implemented in HCS12 Assembly and do not follow standard C call-convention, which is why wrapping is needed to facilitate safe C/Assembly inter-operation.
+Lastly the \emph{Wrapper} subsystem provides miscellaneous interfaces such as driving the LCD and converting \SI{16}{\bit} integers to decimal formatted ASCII strings. These functions are implemented in HCS12 Assembly and do not follow standard C calling convention, which is why wrapping is needed to facilitate safe C/Assembly inter-operation.
 
 \begin{figure}[ht]
     \centering
