@@ -18,11 +18,17 @@
 #include "ui.h"
 #include "thermometer.h"
 
-static unsigned char tick_event = 0;
+static unsigned char long_tick_event = 0;
+static unsigned char short_tick_event = 0;
 
-void handle_tick(void)
+void handle_long_tick(void)
 {
-    tick_event = 1;
+    long_tick_event = 1;
+}
+
+void handle_short_tick(void)
+{
+    short_tick_event = 1;
 }
 
 void main(void)
@@ -39,11 +45,16 @@ void main(void)
 
     for (;;)
     {
-        ui_short_tick();
-
-        if (tick_event)
+        if (short_tick_event)
         {
-            tick_event = 0;
+            short_tick_event = 0;
+
+            ui_short_tick();
+        }
+
+        if (long_tick_event)
+        {
+            long_tick_event = 0;
 
             thermometer_take_measurement();
 

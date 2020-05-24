@@ -27,7 +27,8 @@
         XDEF init_ticker
 
 ; Import symbols
-        XREF handle_tick
+        XREF handle_long_tick
+        XREF handle_short_tick
 
 ; Include derivative specific macros
         INCLUDE 'mc9s12dp256.inc'
@@ -87,6 +88,8 @@ isrECT4:
         ldab #TIMER_CH4         ; Clear the interrupt flag, write a 1 to bit 4
         stab TFLG1
 
+        JSR handle_short_tick   ; Call into C domain and let interrupt be further handled there
+
         inc  ticks              ; Check, if 1 sec has passed
         ldaa ticks
         cmpa #ONESEC
@@ -94,6 +97,6 @@ isrECT4:
 
         clr  ticks              ; If yes, execute user's code
 
-        JSR handle_tick          ; Call into C domain and let interrupt be further handled there
+        JSR handle_long_tick    ; Call into C domain and let interrupt be further handled there
 
 notYet: rti
