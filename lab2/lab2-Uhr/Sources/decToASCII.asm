@@ -20,6 +20,11 @@
 ; ROM: Code section
 .init: SECTION
 
+;********************************************************************
+; Public interface function: dec_to_ascii ... Format a signed integer to decimal ASCII
+; Parameter: X ... pointer to string of size >=7
+;            D ... integer value to be formatted
+; Return:    X ... formatted ASCII string with zero-termination
 dec_to_ascii:
         PSHX                ; Save registers
         PSHY                ;
