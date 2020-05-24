@@ -1,5 +1,27 @@
 #include "wrapper.h"
 
+/**
+ * @brief Assembly domain function for converting a WORD to ASCII in decimal
+ * format.
+ *
+ * Refer to the Assembly domain implementation for details.
+ *
+ * This function must be called through its wrapper #dec_to_ascii_wrapper() to
+ * make parameters visible.
+ *
+ * @warning Do not call directly! Use C wrapper instead.
+ */
+extern void dec_to_ascii(void);
+
+/**
+ * @brief Assembly domain function for writing a line buffer onto the LCD.
+ *
+ * Refer to the Assembly domain implementation for details.
+ *
+ * @warning Do not call directly! Use C wrapper instead.
+ */
+extern void write_line(void);
+
 void wait_for_interrupt(void)
 {
     asm WAI;
