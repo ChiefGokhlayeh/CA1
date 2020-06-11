@@ -19,6 +19,7 @@
 #include <hidef.h>       // Common defines
 #include <mc9s12dp256.h> // CPU specific defines
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "dcf77.h"
 #include "led.h"
@@ -34,13 +35,6 @@
 #define MAX_SECOND_TIME (1100)
 #define MIN_SECOND_TIME (900)
 #define BITS_PER_FRAME (59)
-
-#define DROP_FRAME()      \
-    do                    \
-    {                     \
-        frameLength = 0;  \
-        frameStarted = 0; \
-    } while (0)
 
 #define BIT_AT(BUF, OFFSET) (!!(((unsigned char *)(BUF))[(OFFSET) / 8] & (1 << ((OFFSET) % 8))))
 
@@ -114,6 +108,33 @@ void displayDateDcf77(void)
     writeLine(datum, 1);
 }
 
+void displaySuccessfulSync(void)
+{
+    setLED(0x08);
+}
+
+void displayLossOfSync(void)
+{
+    clrLED(0x08);
+}
+
+void handleLossOfSync(void)
+{
+    frameLength = 0;
+    frameStarted = 0;
+    displayLossOfSync();
+}
+
+void displaySuccessfulDecoding(void)
+{
+    clrLED(0x04);
+}
+
+void displayDecodingError(void)
+{
+    setLED(0x04);
+}
+
 // ****************************************************************************
 //  Read and evaluate DCF77 signal and detect events
 //  Must be called by user every 10ms
@@ -135,6 +156,8 @@ DCF77EVENT sampleSignalDCF77(int currentTime)
     { // some kind of edge
         if (currentSignal)
         { // rising edge
+
+            clrLED(0x02); // Req. 1.4 turn off LED B.1 when signal is high
             if (timeDelta > MAX_LONG_SYMBOL_TIME)
             {
                 event = INVALID;
@@ -154,6 +177,8 @@ DCF77EVENT sampleSignalDCF77(int currentTime)
         }
         else
         { // falling edge
+
+            setLED(0x02); // Req. 1.4 turn on LED B.1 when signal is low
             if (timeDelta <= MAX_START_OF_MINUTE_TIME)
             {
                 if (timeDelta >= MIN_START_OF_MINUTE_TIME)
@@ -200,7 +225,7 @@ unsigned char calculateParity(const void *buf, unsigned char from, unsigned char
     return parity;
 }
 
-void decodeFrame(const unsigned char *frame)
+int decodeFrame(const unsigned char *frame)
 {
     unsigned char minutesParity = calculateParity(frame, 21, 27);
     unsigned char hoursParity = calculateParity(frame, 29, 34);
@@ -243,6 +268,11 @@ void decodeFrame(const unsigned char *frame)
                     BIT_AT(frame, 55) * 20 +
                     BIT_AT(frame, 56) * 40 +
                     BIT_AT(frame, 57) * 80 + 2000;
+        return EXIT_SUCCESS;
+    }
+    else
+    {
+        return EXIT_FAILURE;
     }
 }
 
@@ -257,7 +287,7 @@ void processEventsDCF77(DCF77EVENT event)
     {
     default:
     case INVALID:
-        DROP_FRAME();
+        handleLossOfSync();
         break;
     case VALIDZERO:
         if (frameStarted)
@@ -270,7 +300,7 @@ void processEventsDCF77(DCF77EVENT event)
             }
             else
             {
-                DROP_FRAME();
+                handleLossOfSync();
             }
         }
         break;
@@ -285,7 +315,7 @@ void processEventsDCF77(DCF77EVENT event)
             }
             else
             {
-                DROP_FRAME();
+                handleLossOfSync();
             }
         }
         break;
@@ -297,8 +327,21 @@ void processEventsDCF77(DCF77EVENT event)
         frameStarted = 1;
         if (frameLength >= BITS_PER_FRAME)
         {
-            decodeFrame(frame);
-            setClock((char)dcf77Hour, (char)dcf77Minute, 0);
+            if (EXIT_SUCCESS == decodeFrame(frame))
+            {
+                setClock((char)dcf77Hour, (char)dcf77Minute, 0);
+                displaySuccessfulSync();
+                displaySuccessfulDecoding();
+            }
+            else
+            {
+                displayDecodingError(); // indicate parity or sanity check failure (R1.5b)
+                displayLossOfSync(); // indicate wrong data (R1.5a)
+            }
+        }
+        else
+        {
+            displayLossOfSync(); // wrong amount of data (R1.5a)
         }
         frameLength = 0;
         break;
