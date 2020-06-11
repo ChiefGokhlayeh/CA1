@@ -225,6 +225,14 @@ unsigned char calculateParity(const void *buf, unsigned char from, unsigned char
     return parity;
 }
 
+int isDateValid(void)
+{
+    return dcf77Minute >= 0 && dcf77Minute <= 59 &&
+           dcf77Hour >= 0 && dcf77Hour <= 23 &&
+           dcf77Day >= 0 && dcf77Day <= 31 &&
+           dcf77Month >= 0 && dcf77Month <= 12;
+}
+
 int decodeFrame(const unsigned char *frame)
 {
     unsigned char minutesParity = calculateParity(frame, 21, 27);
@@ -268,7 +276,15 @@ int decodeFrame(const unsigned char *frame)
                     BIT_AT(frame, 55) * 20 +
                     BIT_AT(frame, 56) * 40 +
                     BIT_AT(frame, 57) * 80 + 2000;
-        return EXIT_SUCCESS;
+
+        if (isDateValid())
+        {
+            return EXIT_SUCCESS;
+        }
+        else
+        {
+            return EXIT_FAILURE;
+        }
     }
     else
     {
