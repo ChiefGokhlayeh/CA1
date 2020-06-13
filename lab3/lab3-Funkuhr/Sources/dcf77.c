@@ -38,11 +38,35 @@
 
 #define BIT_AT(BUF, OFFSET) (!!(((unsigned char *)(BUF))[(OFFSET) / 8] & (1 << ((OFFSET) % 8))))
 
+enum DayOfWeek
+{
+    DAYOFWEEK_INVALID = 0,
+    DAYOFWEEK_MONDAY = 1,
+    DAYOFWEEK_TUESDAY,
+    DAYOFWEEK_WEDNESDAY,
+    DAYOFWEEK_THURSDAY,
+    DAYOFWEEK_FRIDAY,
+    DAYOFWEEK_SATURDAY,
+    DAYOFWEEK_SUNDAY,
+
+    DAYOFWEEK_MAX
+};
+
+static const char *const dayOfWeekLookupTable[DAYOFWEEK_MAX] = {"--------",
+                                                                "Monday",
+                                                                "Tuesday",
+                                                                "Wednesday",
+                                                                "Thursday",
+                                                                "Friday",
+                                                                "Saturday",
+                                                                "Sunday"};
+
 // Global variable holding the last DCF77 event
 DCF77EVENT dcf77Event = NODCF77EVENT;
 
 // Modul internal global variables
 static int dcf77Year = 2025, dcf77Month = 1, dcf77Day = 1, dcf77Hour = 0, dcf77Minute = 0; //dcf77 Date and time as integer values
+static enum DayOfWeek dcf77DayOfWeek = DAYOFWEEK_INVALID;
 static unsigned char frame[BITS_PER_FRAME / 8 + 1];
 static unsigned char frameLength = 0;
 static unsigned char frameStarted = 0;
@@ -104,7 +128,7 @@ void displayDateDcf77(void)
 {
     char datum[32];
 
-    (void)sprintf(datum, "%02d.%02d.%04d", dcf77Day, dcf77Month, dcf77Year);
+    (void)sprintf(datum, "%.3s %02d.%02d.%04d", dayOfWeekLookupTable[dcf77DayOfWeek], dcf77Day, dcf77Month, dcf77Year);
     writeLine(datum, 1);
 }
 
@@ -263,6 +287,9 @@ int decodeFrame(const unsigned char *frame)
                    BIT_AT(frame, 39) * 8 +
                    BIT_AT(frame, 40) * 10 +
                    BIT_AT(frame, 41) * 20;
+        dcf77DayOfWeek = (BIT_AT(frame, 42) << 0) |
+                         (BIT_AT(frame, 43) << 1) |
+                         (BIT_AT(frame, 44) << 2);
         dcf77Month = BIT_AT(frame, 45) +
                      BIT_AT(frame, 46) * 2 +
                      BIT_AT(frame, 47) * 4 +
@@ -352,7 +379,7 @@ void processEventsDCF77(DCF77EVENT event)
             else
             {
                 displayDecodingError(); // indicate parity or sanity check failure (R1.5b)
-                displayLossOfSync(); // indicate wrong data (R1.5a)
+                displayLossOfSync();    // indicate wrong data (R1.5a)
             }
         }
         else
