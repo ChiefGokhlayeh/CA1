@@ -14,20 +14,6 @@ typedef enum
     SECONDTICK
 } CLOCKEVENT;
 
-enum DayOfWeek
-{
-    DAYOFWEEK_INVALID = 0,
-    DAYOFWEEK_MONDAY = 1,
-    DAYOFWEEK_TUESDAY,
-    DAYOFWEEK_WEDNESDAY,
-    DAYOFWEEK_THURSDAY,
-    DAYOFWEEK_FRIDAY,
-    DAYOFWEEK_SATURDAY,
-    DAYOFWEEK_SUNDAY,
-
-    DAYOFWEEK_MAX
-};
-
 enum Timezone
 {
     TIMEZONE_DE,
@@ -42,5 +28,5 @@ extern CLOCKEVENT clockEvent;
 // Public functions, for details see clock.c
 void initClock(void);
 void processEventsClock(CLOCKEVENT event);
-void setClock(unsigned int y, unsigned char m, unsigned char dom, enum DayOfWeek dow, unsigned char hours, unsigned char minutes, unsigned char seconds);
+void setClock(unsigned int y, unsigned char m, unsigned char dom, unsigned char hours, unsigned char minutes, unsigned char seconds);
 void displayDateTime(void);

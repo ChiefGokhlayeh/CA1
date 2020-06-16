@@ -44,7 +44,7 @@ DCF77EVENT dcf77Event = NODCF77EVENT;
 // Modul internal global variables
 static unsigned char dcf77Month = 1, dcf77Day = 1, dcf77Hour = 0, dcf77Minute = 0; //dcf77 Date and time as integer values
 static int dcf77Year = 2025;
-static enum DayOfWeek dcf77DayOfWeek = DAYOFWEEK_INVALID;
+/*static enum DayOfWeek dcf77DayOfWeek = DAYOFWEEK_INVALID; */
 static unsigned char frame[BITS_PER_FRAME / 8 + 1];
 static unsigned char frameLength = 0;
 static unsigned char frameStarted = 0;
@@ -88,7 +88,7 @@ char readPortSim(void);       // Use instead of readPort() for simulator testing
 //  Called once before using the module
 void initDCF77(void)
 {
-    setClock(dcf77Year, dcf77Month, dcf77Day, dcf77DayOfWeek, dcf77Hour, dcf77Minute, 0);
+    setClock(dcf77Year, dcf77Month, dcf77Day, /* dcf77DayOfWeek, */ dcf77Hour, dcf77Minute, 0);
 
 #ifdef SIMULATOR
     initializePortSim();
@@ -252,9 +252,9 @@ int decodeFrame(const unsigned char *frame)
                    BIT_AT(frame, 39) * 8 +
                    BIT_AT(frame, 40) * 10 +
                    BIT_AT(frame, 41) * 20;
-        dcf77DayOfWeek = (BIT_AT(frame, 42) << 0) |
-                         (BIT_AT(frame, 43) << 1) |
-                         (BIT_AT(frame, 44) << 2);
+        /* dcf77DayOfWeek = (BIT_AT(frame, 42) << 0) |
+         *                  (BIT_AT(frame, 43) << 1) |
+         *                  (BIT_AT(frame, 44) << 2); */
         dcf77Month = BIT_AT(frame, 45) +
                      BIT_AT(frame, 46) * 2 +
                      BIT_AT(frame, 47) * 4 +
@@ -337,7 +337,7 @@ void processEventsDCF77(DCF77EVENT event)
         {
             if (EXIT_SUCCESS == decodeFrame(frame))
             {
-                setClock(dcf77Year, dcf77Month, dcf77Day, dcf77DayOfWeek, dcf77Hour, dcf77Minute, 0);
+                setClock(dcf77Year, dcf77Month, dcf77Day, /* dcf77DayOfWeek, */ dcf77Hour, dcf77Minute, 0);
                 displaySuccessfulSync();
                 displaySuccessfulDecoding();
             }

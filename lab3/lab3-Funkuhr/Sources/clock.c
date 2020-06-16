@@ -8,6 +8,7 @@
 */
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "clock.h"
 #include "lcd.h"
@@ -26,6 +27,20 @@ static struct TimezoneInfo
     signed char Offset;
 } timezoneLookupTable[TIMEZONE_MAX] = {{"DE", 0}, {"US", -6}};
 
+enum DayOfWeek
+{
+    DAYOFWEEK_INVALID = 0,
+    DAYOFWEEK_MONDAY = 1,
+    DAYOFWEEK_TUESDAY,
+    DAYOFWEEK_WEDNESDAY,
+    DAYOFWEEK_THURSDAY,
+    DAYOFWEEK_FRIDAY,
+    DAYOFWEEK_SATURDAY,
+    DAYOFWEEK_SUNDAY,
+
+    DAYOFWEEK_MAX
+};
+
 static const char *const dayOfWeekLookupTable[DAYOFWEEK_MAX] = {"--------",
                                                                 "Monday",
                                                                 "Tuesday",
@@ -37,11 +52,19 @@ static const char *const dayOfWeekLookupTable[DAYOFWEEK_MAX] = {"--------",
 // Global variable holding the last clock event
 CLOCKEVENT clockEvent = NOCLOCKEVENT;
 
-// Modul internal global variables
-static unsigned char hrs = 0, mins = 0, secs = 0, dayOfMonth = 0, months = 0;
-static unsigned int years = 0;
-static enum DayOfWeek dayOfWeek = DAYOFWEEK_INVALID;
-static enum Timezone timezone = TIMEZONE_DE;
+// Module internal global variables
+static struct DateTime
+{
+    unsigned char hour;
+    unsigned char minute;
+    unsigned char second;
+    unsigned char dayOfMonth;
+    unsigned char month;
+    unsigned int year;
+    enum DayOfWeek dayOfWeek;
+    enum Timezone timezone;
+} dateTime;
+
 static int uptime = 0;
 static int ticks = 0;
 static char previousButtonState = 0;
@@ -51,6 +74,9 @@ static char previousButtonState = 0;
 //  Called once before using the module
 void initClock(void)
 {
+    setClock(2020, 1, 1, 0, 0, 0);
+    dateTime.timezone = TIMEZONE_DE;
+
     displayDateTime();
 
 #ifdef SIMULATOR
@@ -88,151 +114,239 @@ void tick10ms(void)
     buttonState = !!(PTH & 0x08);                           // get button press state
     if (buttonState != previousButtonState && !buttonState) // only toggle timezone on rising edge (button release)
     {
-        timezone = (timezone + 1) % TIMEZONE_MAX;
+        dateTime.timezone = (dateTime.timezone + 1) % TIMEZONE_MAX;
     }
     previousButtonState = buttonState;
 }
 
-// ****************************************************************************
-// Handle overflow at above 24 hours
-// Will handle subsequent overflows in day-of-month, month and year.
-// If no overflow is detected, this function will do nothing.
-// Parameter:   hours       pointer to hour field (in/out-parameter)
-//              dayOfMonth  pointer to day-of-month field (in/out-parameter)
-//              dayOfWeek   pointer to day-of-week field (in/out-parameter)
-//              month       pointer to month field (in/out-parameter)
-//              year        pointer to year field (in/out-parameter)
-// Returns:     -
-void handleHourOverflow(unsigned char *hours, unsigned char *dayOfMonth, enum DayOfWeek *dayOfWeek, unsigned char *month, unsigned int *year)
+static unsigned char isLeapYear(unsigned int year)
 {
-    char daysOverflow = 0;
-    if (*hours >= 24)
-    {
-        *hours %= 24;
-        if (*month == 1 || *month == 3 || *month == 5 || *month == 7 ||
-            *month == 8 || *month == 10 || *month == 12)
-        {
-            if (++(*dayOfMonth) > 31)
-            {
-                *dayOfMonth = 1;
-                daysOverflow = 1;
-            }
-        }
-        else if (*month == 2)
-        { /* Special treatment for February. */
+    return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+}
 
-            /* Determining a leapyear is based on three rules:
+static unsigned char daysInMonth(unsigned char month, unsigned int year)
+{
+    if (month == 1 || month == 3 || month == 5 || month == 7 ||
+        month == 8 || month == 10 || month == 12)
+    {
+        return 31;
+    }
+    else if (month == 2)
+    { /* Special treatment for February. */
+
+        /* Determining a leapyear is based on three rules:
              *  1) divisible by 4 -> leapyear
              *  2) and divisible by 100 -> not leapyear
              *  3) and divisible by 400 -> leapyear
              */
-            if (++(*dayOfMonth) > (*year % 4 == 0 &&
-                                           (*year % 100 != 0 || *year % 400 == 0)
-                                       ? 29 /* leapyear */
-                                       : 28 /* non-leapyear */))
-            {
-                *dayOfMonth = 1;
-                daysOverflow = 1;
-            }
-        }
-        else
-        {
-            if (++(*dayOfMonth) > 30)
-            {
-                *dayOfMonth = 1;
-                daysOverflow = 1;
-            }
-        }
-
-        if (*dayOfWeek != DAYOFWEEK_INVALID)
-        {
-            /* Increment day-of-week but keep in mind that SUNDAY wraps
-             * around to MONDAY, not to INVALID! That's what the modulo
-             * by max-1 is for. */
-            *dayOfWeek = (*dayOfWeek + 1) % (DAYOFWEEK_MAX - 1);
-        }
-
-        if (daysOverflow)
-        { /* Days overflowed into a new month, increment months and
-           * check year border */
-            if (++(*month) > 12)
-            {
-                *month = 1;
-                (*year)++;
-            }
-        }
+        return isLeapYear(year)
+                   ? 29 /* leapyear */
+                   : 28 /* non-leapyear */;
+    }
+    else
+    {
+        return 30;
     }
 }
 
-// ****************************************************************************
-// Handle underflows at below 0 hours. hours is a unsigned value, so we
-// interpret everything above 23 as underflow.
-// Will handle subsequent overflows in day-of-month, month and year.
-// If no underflow is detected, this function will do nothing.
-// Parameter:   hours       pointer to hour field (in/out-parameter)
-//              dayOfMonth  pointer to day-of-month field (in/out-parameter)
-//              dayOfWeek   pointer to day-of-week field (in/out-parameter)
-//              month       pointer to month field (in/out-parameter)
-//              year        pointer to year field (in/out-parameter)
-// Returns:     -
-void handleHourUnderflow(unsigned char *hours, unsigned char *dayOfMonth, enum DayOfWeek *dayOfWeek, unsigned char *month, unsigned int *year)
+static enum DayOfWeek calculateDayOfWeek(unsigned int y, unsigned char m, unsigned char d)
 {
-    char daysUnderflow = 0;
-    if (*hours >= 24)
+    /* This algorithm calculated the day-of-week for a given gregorian calendar
+     * date. It does so using the fact that some months share the same
+     * day-of-week at the beginning of the month. Notably, in a normal year (365
+     * days), 01. Jan has the same dow as Apr and Jul. Feb and Aug also share
+     * the same dow, and so on. We can define a look-up table for each month's
+     * start dow relative to 01. Jan. Note that to compensate for leap-days
+     * every other offset starting with March is decremented by 1. */
+    static unsigned char monthOffsetLookup[12] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+    enum DayOfWeek result;
+
+    y -= m < 3; /* If month is Jan or Feb, do not subtract leap day. Otherwise
+                 * we would potentially add this years leap day onto Jan. */
+
+    /* The part of the formula:
+     *  $ y / 4 - y / 100 + y / 400 $
+     * calculates the number leap days leading up to year $y$. Note that we
+     * assume integer division, which automatically does a floor(...) of the
+     * result.
+     * We assume that the Gregorian calendar starts on a Monday 0001-01-01,
+     * year 0000 does not exist.
+     * The part:
+     *  $ y + monthOffsetLookup[m - 1] $
+     * calculates the weekday based on the year we're in and the value from the
+     * look-up table. We then simply add the day-of-month and the number of
+     * leap-days from earlier, divide the whole thing by 7 and return the
+     * remainder. */
+    result = (y / 4 - y / 100 + y / 400 +
+              y + monthOffsetLookup[m - 1] + d) %
+             (DAYOFWEEK_MAX - 1);
+
+    /* The algorithm has one shortcoming in that Sunday maps to 0 and 7. Instead
+     * complicating the math even further though, it's simpler to just add a
+     * check at the end. Maybe not as elegant, but faster and easier to
+     * understand. */
+    return result <= DAYOFWEEK_INVALID ? DAYOFWEEK_SUNDAY : result;
+}
+
+static void incrementYears(struct DateTime *dateTime)
+{
+    unsigned char daysInNewYearsMonth;
+    dateTime->year++;
+    daysInNewYearsMonth = daysInMonth(dateTime->month, dateTime->year);
+    dateTime->dayOfMonth = dateTime->dayOfMonth > daysInNewYearsMonth ? daysInNewYearsMonth : dateTime->dayOfMonth;
+    dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
+}
+
+static void incrementMonths(struct DateTime *dateTime)
+{
+    unsigned char daysInNewMonth;
+    if (dateTime->month >= 12)
     {
-        *hours = 24 - 256 + *hours; /* handling underflow of unsigned value */
-        if (*month == 1 || *month == 3 || *month == 5 || *month == 7 ||
-            *month == 8 || *month == 10 || *month == 12)
-        {
-            if (--(*dayOfMonth) < 1)
-            {
-                *dayOfMonth = 31;
-                daysUnderflow = 1;
-            }
-        }
-        else if (*month == 2)
-        { /* Special treatment for February. */
+        incrementYears(dateTime);
+        dateTime->month = 1;
+    }
+    else
+    {
+        dateTime->month++;
+    }
+    daysInNewMonth = daysInMonth(dateTime->month, dateTime->year);
+    dateTime->dayOfMonth = dateTime->dayOfMonth > daysInNewMonth ? daysInNewMonth : dateTime->dayOfMonth;
 
-            /* Determining a leapyear is based on three rules:
-             *  1) divisible by 4 -> leapyear
-             *  2) and divisible by 100 -> not leapyear
-             *  3) and divisible by 400 -> leapyear
-             */
-            if (--(*dayOfMonth) < 1)
-            {
-                *dayOfMonth = (*year % 4 == 0 &&
-                                       (*year % 100 != 0 || *year % 400 == 0)
-                                   ? 29 /* leapyear */
-                                   : 28 /* non-leapyear */);
-                daysUnderflow = 1;
-            }
-        }
-        else
-        {
-            if (--(*dayOfMonth) < 1)
-            {
-                *dayOfMonth = 30;
-                daysUnderflow = 1;
-            }
-        }
+    dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
+}
 
-        if (*dayOfWeek != DAYOFWEEK_INVALID)
-        {
-            /* Decrement day-of-week but keep in mind that MONDAY wraps
-             * around to SUNDAY, not to INVALID! */
-            *dayOfWeek = *dayOfWeek - 1;
-            *dayOfWeek = *dayOfWeek <= DAYOFWEEK_INVALID ? DAYOFWEEK_SUNDAY : *dayOfWeek;
-        }
+static void incrementDayOfMonths(struct DateTime *dateTime)
+{
+    if (dateTime->dayOfMonth >= daysInMonth(dateTime->dayOfMonth, dateTime->year))
+    {
+        incrementMonths(dateTime);
+        dateTime->dayOfMonth = 0;
+    }
+    else
+    {
+        dateTime->dayOfMonth++;
+    }
 
-        if (daysUnderflow)
-        { /* Days overflowed into a new month, increment months and
-           * check year border */
-            if (--(*month) < 1)
-            {
-                *month = 12;
-                (*year)--;
-            }
-        }
+    dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
+}
+
+static void incrementHours(struct DateTime *dateTime)
+{
+    if (dateTime->hour >= 23)
+    {
+        incrementDayOfMonths(dateTime);
+        dateTime->hour = 0;
+    }
+    else
+    {
+        dateTime->hour++;
+    }
+}
+
+static void incrementMinutes(struct DateTime *dateTime)
+{
+    if (dateTime->minute >= 59)
+    {
+        incrementHours(dateTime);
+        dateTime->minute = 0;
+    }
+    else
+    {
+        dateTime->minute++;
+    }
+}
+
+static void incrementSeconds(struct DateTime *dateTime)
+{
+    if (dateTime->second >= 59)
+    {
+        incrementMinutes(dateTime);
+        dateTime->second = 0;
+    }
+    else
+    {
+        dateTime->second++;
+    }
+}
+
+static void decrementYears(struct DateTime *dateTime)
+{
+    unsigned char daysInPreviousYearsMonth;
+    dateTime->year--;
+    daysInPreviousYearsMonth = daysInMonth(dateTime->month, dateTime->year);
+    dateTime->dayOfMonth = dateTime->dayOfMonth > daysInPreviousYearsMonth ? daysInPreviousYearsMonth : dateTime->dayOfMonth;
+    dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
+}
+
+static void decrementMonths(struct DateTime *dateTime)
+{
+    unsigned char daysInPreviousMonth;
+    if (dateTime->month <= 1)
+    {
+        decrementYears(dateTime);
+        dateTime->month = 12;
+    }
+    else
+    {
+        dateTime->month--;
+    }
+    daysInPreviousMonth = daysInMonth(dateTime->month, dateTime->year);
+    dateTime->dayOfMonth = dateTime->dayOfMonth > daysInPreviousMonth ? daysInPreviousMonth : dateTime->dayOfMonth;
+
+    dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
+}
+
+static void decrementDayOfMonths(struct DateTime *dateTime)
+{
+    if (dateTime->dayOfMonth <= 1)
+    {
+        decrementMonths(dateTime);
+        dateTime->dayOfMonth = daysInMonth(dateTime->dayOfMonth, dateTime->year);
+    }
+    else
+    {
+        dateTime->dayOfMonth--;
+    }
+
+    dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
+}
+
+static void decrementHours(struct DateTime *dateTime)
+{
+    if (dateTime->hour <= 0)
+    {
+        decrementDayOfMonths(dateTime);
+        dateTime->hour = 23;
+    }
+    else
+    {
+        dateTime->hour--;
+    }
+}
+
+static void decrementMinutes(struct DateTime *dateTime)
+{
+    if (dateTime->minute <= 0)
+    {
+        decrementHours(dateTime);
+        dateTime->minute = 59;
+    }
+    else
+    {
+        dateTime->minute--;
+    }
+}
+
+static void decrementSeconds(struct DateTime *dateTime)
+{
+    if (dateTime->second <= 0)
+    {
+        decrementMinutes(dateTime);
+        dateTime->second = 59;
+    }
+    else
+    {
+        dateTime->second--;
     }
 }
 
@@ -247,33 +361,25 @@ void processEventsClock(CLOCKEVENT event)
     if (event == NOCLOCKEVENT)
         return;
 
-    if (++secs >= 60)
-    {
-        secs = 0;
-        if (++mins >= 60)
-        {
-            mins = 0;
-            ++hrs;
-            handleHourOverflow(&hrs, &dayOfMonth, &dayOfWeek, &months, &years);
-        }
-    }
+    incrementSeconds(&dateTime);
     displayDateTime();
 }
 
 // ****************************************************************************
 // Allow other modules, e.g. DCF77, so set the time
-// Parameters:  hours, minutes, seconds as integers
+// Parameters:  year, month, day-of-month, hour, minute, second as integers
 // Returns:     -
-void setClock(unsigned int y, unsigned char m, unsigned char dom, enum DayOfWeek dow, unsigned char hours, unsigned char minutes, unsigned char seconds)
+void setClock(unsigned int year, unsigned char month, unsigned char dayOfMonth, unsigned char hour, unsigned char minute, unsigned char second)
 {
-    years = y;
-    months = m;
-    dayOfMonth = dom;
-    dayOfWeek = dow;
+    dateTime.year = year;
+    dateTime.month = month;
+    dateTime.dayOfMonth = dayOfMonth;
 
-    hrs = hours;
-    mins = minutes;
-    secs = seconds;
+    dateTime.hour = hour;
+    dateTime.minute = minute;
+    dateTime.second = second;
+
+    dateTime.dayOfWeek = calculateDayOfWeek(dateTime.year, dateTime.month, dateTime.dayOfMonth);
 
     ticks = 0;
 }
@@ -285,25 +391,26 @@ void setClock(unsigned int y, unsigned char m, unsigned char dom, enum DayOfWeek
 // Returns:     -
 void displayDateTime(void)
 {
-    unsigned char hh = hrs, mm = mins, ss = secs, dd = dayOfMonth, MM = months;
-    unsigned int YYYY = years;
-    enum DayOfWeek dow = dayOfWeek;
+    unsigned char i;
+    struct DateTime dateTimeClone = dateTime;
     char buf[32] = "00:00:00";
 
-    hh += timezoneLookupTable[timezone].Offset;
-    if (timezoneLookupTable[timezone].Offset > 0)
-    { // positive offset values potentially overflow
-        handleHourOverflow(&hh, &dd, &dow, &MM, &YYYY);
-    }
-    else
-    { // while negative ones potentially underflow
-        handleHourUnderflow(&hh, &dd, &dow, &MM, &YYYY);
+    for (i = 0; i < abs(timezoneLookupTable[dateTimeClone.timezone].Offset); ++i)
+    {
+        if (timezoneLookupTable[dateTimeClone.timezone].Offset > 0)
+        {
+            incrementHours(&dateTimeClone);
+        }
+        else
+        {
+            decrementHours(&dateTimeClone);
+        }
     }
 
-    (void)sprintf(buf, "%02u:%02u:%02u %s", hh, mm, ss, timezoneLookupTable[timezone].Name);
+    (void)sprintf(buf, "%02u:%02u:%02u %s", dateTimeClone.hour, dateTimeClone.minute, dateTimeClone.second, timezoneLookupTable[dateTimeClone.timezone].Name);
     writeLine(buf, 0);
 
-    (void)sprintf(buf, "%.3s %02d.%02d.%04d", dayOfWeekLookupTable[dow], dd, MM, YYYY);
+    (void)sprintf(buf, "%.3s %02d.%02d.%04d", dayOfWeekLookupTable[dateTimeClone.dayOfWeek], dateTimeClone.dayOfMonth, dateTimeClone.month, dateTimeClone.year);
     writeLine(buf, 1);
 }
 
