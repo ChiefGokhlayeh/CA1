@@ -229,6 +229,10 @@ DCF77EVENT sampleSignalDCF77(int currentTime)
                                          * calculate time-delta of next rising
                                          * edge */
             }
+            else
+            { // signal stuck high
+                event = INVALID;
+            }
         }
     }
     else
