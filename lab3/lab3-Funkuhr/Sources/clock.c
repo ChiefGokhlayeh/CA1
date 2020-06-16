@@ -67,6 +67,7 @@ static struct DateTime
 
 static int uptime = 0;
 static int ticks = 0;
+
 static char previousButtonState = 0;
 
 // ****************************************************************************
@@ -119,11 +120,19 @@ void tick10ms(void)
     previousButtonState = buttonState;
 }
 
+// ****************************************************************************
+// Check if given year is leap-year.
+// Parameters:  year
+// Returns:     number of days in given month
 static unsigned char isLeapYear(unsigned int year)
 {
     return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
 }
 
+// ****************************************************************************
+// Look-up number of days for given month. Does take leap-years into account.
+// Parameters:  year and month
+// Returns:     number of days in given month
 static unsigned char daysInMonth(unsigned char month, unsigned int year)
 {
     if (month == 1 || month == 3 || month == 5 || month == 7 ||
@@ -149,6 +158,12 @@ static unsigned char daysInMonth(unsigned char month, unsigned int year)
     }
 }
 
+// ****************************************************************************
+// Calculate day-of-week given a date as year, month and day-of-month. Makes use
+// of the algorithm proposed by Arpit Mishra (https://www.hackerearth.com/blog/developers/how-to-find-the-day-of-a-week/).
+// Parameters:  Calendar date as year, month, day-of-month.
+// Returns:     Value of day-of-week as enum with valid range from 1 (Monday) to
+//              7 (Sunday).
 static enum DayOfWeek calculateDayOfWeek(unsigned int y, unsigned char m, unsigned char d)
 {
     /* This algorithm calculated the day-of-week for a given gregorian calendar
@@ -188,6 +203,13 @@ static enum DayOfWeek calculateDayOfWeek(unsigned int y, unsigned char m, unsign
     return result <= DAYOFWEEK_INVALID ? DAYOFWEEK_SUNDAY : result;
 }
 
+// ****************************************************************************
+// Increment years count of given date & time structure. Does take overflows
+// into account. Day-of-month will be set to the minimum between day-of-month
+// and maximum number of days in the month of the next year (only relevant when
+// incrementing 29. Feb to a non-leap-year).
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void incrementYears(struct DateTime *dateTime)
 {
     unsigned char daysInNewYearsMonth;
@@ -197,11 +219,17 @@ static void incrementYears(struct DateTime *dateTime)
     dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
 }
 
+// ****************************************************************************
+// Increment months count of given date & time structure. Does take overflows
+// into account. Day-of-month will be set to the minimum between day-of-month
+// and maximum number of days in the next month.
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void incrementMonths(struct DateTime *dateTime)
 {
     unsigned char daysInNewMonth;
     if (dateTime->month >= 12)
-    {
+    { // overflow
         incrementYears(dateTime);
         dateTime->month = 1;
     }
@@ -215,10 +243,15 @@ static void incrementMonths(struct DateTime *dateTime)
     dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
 }
 
+// ****************************************************************************
+// Increment months count of given date & time structure. Does take overflows
+// into account.
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void incrementDayOfMonths(struct DateTime *dateTime)
 {
     if (dateTime->dayOfMonth >= daysInMonth(dateTime->dayOfMonth, dateTime->year))
-    {
+    { // overflow
         incrementMonths(dateTime);
         dateTime->dayOfMonth = 0;
     }
@@ -230,10 +263,15 @@ static void incrementDayOfMonths(struct DateTime *dateTime)
     dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
 }
 
+// ****************************************************************************
+// Increment minutes count of given date & time structure. Does take overflows
+// into account.
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void incrementHours(struct DateTime *dateTime)
 {
     if (dateTime->hour >= 23)
-    {
+    { // overflow
         incrementDayOfMonths(dateTime);
         dateTime->hour = 0;
     }
@@ -243,10 +281,15 @@ static void incrementHours(struct DateTime *dateTime)
     }
 }
 
+// ****************************************************************************
+// Increment minutes count of given date & time structure. Does take overflows
+// into account.
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void incrementMinutes(struct DateTime *dateTime)
 {
     if (dateTime->minute >= 59)
-    {
+    { // overflow
         incrementHours(dateTime);
         dateTime->minute = 0;
     }
@@ -256,10 +299,15 @@ static void incrementMinutes(struct DateTime *dateTime)
     }
 }
 
+// ****************************************************************************
+// Increment seconds count of given date & time structure. Does take overflows
+// into account.
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void incrementSeconds(struct DateTime *dateTime)
 {
     if (dateTime->second >= 59)
-    {
+    { // overflow
         incrementMinutes(dateTime);
         dateTime->second = 0;
     }
@@ -269,20 +317,37 @@ static void incrementSeconds(struct DateTime *dateTime)
     }
 }
 
+// ****************************************************************************
+// Decrement years count of given date & time structure. Does take underflows
+// into account. Day-of-month will be set to the minimum between day-of-month
+// and maximum number of days in the month of the past year (only relevant when
+// decrementing 29. Feb to a non-leap-year).
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void decrementYears(struct DateTime *dateTime)
 {
     unsigned char daysInPreviousYearsMonth;
     dateTime->year--;
+
+    /* Ensure that dateTime->dayOfMonth is a valid value, i.e. within the months
+     * maximum number of days. */
     daysInPreviousYearsMonth = daysInMonth(dateTime->month, dateTime->year);
     dateTime->dayOfMonth = dateTime->dayOfMonth > daysInPreviousYearsMonth ? daysInPreviousYearsMonth : dateTime->dayOfMonth;
+
     dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
 }
 
+// ****************************************************************************
+// Decrement months count of given date & time structure. Does take underflows
+// into account. Day-of-month will be set to the minimum between day-of-month
+// and maximum number of days in the preceeding month.
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void decrementMonths(struct DateTime *dateTime)
 {
     unsigned char daysInPreviousMonth;
     if (dateTime->month <= 1)
-    {
+    { // underflow
         decrementYears(dateTime);
         dateTime->month = 12;
     }
@@ -290,16 +355,24 @@ static void decrementMonths(struct DateTime *dateTime)
     {
         dateTime->month--;
     }
+
+    /* Ensure that dateTime->dayOfMonth is a valid value, i.e. within the months
+     * maximum number of days. */
     daysInPreviousMonth = daysInMonth(dateTime->month, dateTime->year);
     dateTime->dayOfMonth = dateTime->dayOfMonth > daysInPreviousMonth ? daysInPreviousMonth : dateTime->dayOfMonth;
 
     dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
 }
 
+// ****************************************************************************
+// Decrement day-of-month count of given date & time structure. Does take
+// underflows into account.
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void decrementDayOfMonths(struct DateTime *dateTime)
 {
     if (dateTime->dayOfMonth <= 1)
-    {
+    { // underflow
         decrementMonths(dateTime);
         dateTime->dayOfMonth = daysInMonth(dateTime->dayOfMonth, dateTime->year);
     }
@@ -311,10 +384,15 @@ static void decrementDayOfMonths(struct DateTime *dateTime)
     dateTime->dayOfWeek = calculateDayOfWeek(dateTime->year, dateTime->month, dateTime->dayOfMonth);
 }
 
+// ****************************************************************************
+// Decrement hours count of given date & time structure. Does take underflows
+// into account.
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void decrementHours(struct DateTime *dateTime)
 {
     if (dateTime->hour <= 0)
-    {
+    { // underflow
         decrementDayOfMonths(dateTime);
         dateTime->hour = 23;
     }
@@ -324,10 +402,15 @@ static void decrementHours(struct DateTime *dateTime)
     }
 }
 
+// ****************************************************************************
+// Decrement minutes count of given date & time structure. Does take underflows
+// into account.
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void decrementMinutes(struct DateTime *dateTime)
 {
     if (dateTime->minute <= 0)
-    {
+    { // underflow
         decrementHours(dateTime);
         dateTime->minute = 59;
     }
@@ -337,10 +420,15 @@ static void decrementMinutes(struct DateTime *dateTime)
     }
 }
 
+// ****************************************************************************
+// Decrement seconds count of given date & time structure. Does take underflows
+// into account.
+// Parameters:  Pointer to structure holding date & time information.
+// Returns:     -
 static void decrementSeconds(struct DateTime *dateTime)
 {
     if (dateTime->second <= 0)
-    {
+    { // underflow
         decrementMinutes(dateTime);
         dateTime->second = 59;
     }
