@@ -1,0 +1,57 @@
+% !TeX root = ../main.tex
+\chapter{Introduction}
+
+Purpose of this document is to describe and explain the inner workings of the DCF77 controlled digital clock application, created as part of lab 3 exercise 4.1 in the Computer Architecture course at the University of Esslingen.
+
+A description of operation, functional and non-functional requirements; as well as design requirements are described in the lab exercise sheet. This document will focus on \emph{how} things are implemented, not \emph{why}.
+
+The manual is structured in chapters, each describing an individual module. A module description consists of the public interface, used to interact with other modules; as well as implementation details.
+
+This document will primarily focus on the Clock and DCF77 components, as all other modules are imported from the lab template without notable modifications. However, certain architectural changes to the overall system have been made. These will be explained in Section~\ref{sec:deviations_from_template_architecture}.
+
+\section{Module Overview}\label{sec:module_overview}
+
+Figure~\ref{fig:module_overview} depicts a logical component view of the entire application.
+
+The system starts by booting into \emph{Main}. Here all other components are initialized (omitted from diagram), including one hardware timer, used as a sys-tick generator; and two OS \emph{tasklets}, serving as workers for the \emph{DCF77} and \emph{Clock} components. The tasklets are passed to the OS and the main scheduling loop begins. Using the previously initialized hardware timer, a \SI{10}{\milli\second} tick is generated. The tick is used to sample the DCF77 signal and generate a clock event on every \nth{100} tick for the Clock's tasklet to handle.
+
+Once signaled the Clock tasklet processes any pending events, which mainly involve incrementing the seconds counter and displaying the current date and time on the LCD. Date and time information may be offset form local system time by a timezone setting. Switching timezones is done via button press, which is detected by the Clock module itself.
+
+If sampling the DCF77 signal resulted in an parser event, the corresponding tasklet is executed. Once a full frame is received and correctly decoded, \emph{Set Time} is used to overwrite the current system time with the newly acquired local date/time information.
+
+\begin{figure}[ht]
+    \centering
+    \includeinkscape[width=\textwidth,height=0.6\textheight]{generated/components.pdf_tex}
+
+    \caption{Component Overview}\label{fig:module_overview}
+\end{figure}
+
+\section{Deviations from Template Architecture}\label{sec:deviations_from_template_architecture}
+
+The original template code included several pre-written source- and header-, as well as miscellaneous CodeWarrior project files. An initial screening of these files revealed several issues and shortcomings apart from the obvious gaps left as part of the exercise.
+
+\begin{enumerate}
+    \item \textbf{No clear owner of system date and time discernable.} Both Clock and DCF77 hold copies of time information, while only DCF77 is aware of the date. Given the requirement of auto-incrementing system time based on a local tick source, to allow limited operation even without DCF77 synchronization, Clock is tasked with incrementing a seconds counter every \nth{100} tick.
+
+          However, because Clock has no concept of date a time overflows from \DTMdisplaytime{23}{59}{59} to \DTMdisplaytime{00}{00}{00} would not affect the currently displayed date. The only entity aware of both time and date is DCF77, but it lacks the auto-increment functionality as its main task is to capture and decode the DCF77 signals.
+
+    \item \textbf{Disruption of informational cohesion between date and time.} A related issue has to do with the general perception of Gregorian calendar dates and time in computer systems. In most representations time is coupled to a date; a prominent example being \lstinline[language=C]{struct tm} as defined by the C standard's \path{time.h} (see Listing~\ref{lst:struct_tm}).
+
+          This need for cohesion becomes even more important when working with timezones. Offsetting the system time by several hours may pass the day-night boundary resulting in not only a shift in the hour count, but also day-of-month and potentially even month and year.
+
+          \begin{lstlisting}[language=C,caption={Date/time structure as defined by C standard~\cite{C99_dateandtime}.},label={lst:struct_tm}]
+    struct tm {
+        int tm_sec;   // seconds after the minute - [0, 60]
+        int tm_min;   // minutes after the hour - [0, 59]
+        int tm_hour;  // hours since midnight - [0, 23]
+        int tm_mday;  // day of the month - [1, 31]
+        int tm_mon;   // months since January - [0, 11]
+        int tm_year;  // years since 1900
+        int tm_wday;  // days since Sunday - [0, 6]
+        int tm_yday;  // days since January 1 - [0, 365]
+        int tm_isdst; // Daylight Saving Time flag
+    };
+    \end{lstlisting}
+\end{enumerate}
+
+To mitigate both issues, date and time have to be viewed as a singular entity and ownership of all time-keeping mechanisms be transferred to Clock. This includes the responsibility of displaying both time and date, with the correct timezone offset applied. The role of DCF77 reduces to \emph{only} capturing and decoding DCF77 signals; and, when date/time data becomes available, synchronize Clock's time \emph{and date} against the DCF77 reference.

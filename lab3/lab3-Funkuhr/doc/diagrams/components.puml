@@ -1,0 +1,42 @@
+@startuml
+
+title Radio Controlled Digital Clock
+footer (C) 2020 Andreas Baulig
+
+component [Main] as main
+component [OS] as os
+component [DCF77] as dcf77
+component [Clock] as clock
+component [LCD] as lcd
+component [LED] as led
+component [Ticker] as ticker
+
+() "Loop Tasks" as os_run
+() "Sample" as dcf77_sample
+() "Process Events" as dcf77_process_events
+() "Process Events" as clock_process_events
+() "10ms Tick" as clock_tick
+() "Set Time" as clock_set_time
+() "Write Line" as lcd_write_line
+() "LED on/off" as led_on_off
+
+os #-up- os_run
+dcf77 #-up- dcf77_sample
+dcf77 #-up- dcf77_process_events
+clock #-up- clock_process_events
+clock #-down- clock_set_time
+clock #-left- clock_tick
+lcd #-left- lcd_write_line
+led #-left- led_on_off
+
+main -left-( os_run
+dcf77 -up-( clock_set_time
+os --right--( clock_process_events
+os -left-( dcf77_process_events
+ticker -down-( dcf77_sample
+ticker -right-( clock_tick
+clock -right-( lcd_write_line
+clock -down-( led_on_off
+dcf77 -right-( led_on_off
+
+@enduml

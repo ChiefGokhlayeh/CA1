@@ -1,0 +1,43 @@
+@startuml
+
+skinparam defaultTextAlignment center
+
+title DCF77 Parse Procedure
+footer (C) 2020 Andreas Baulig
+
+' enum { NODCF77EVENT=0, VALIDZERO, VALIDONE, VALIDSECOND, VALIDMINUTE, INVALID }
+
+start
+
+if (INVALID) then (yes)
+    :drop frame;
+elseif (VALIDZERO) then (yes)
+    :put 0 on frame;
+elseif (VALIDONE) then (yes)
+    :put 1 on frame;
+elseif (VALIDSECOND or NODCF77EVENT) then (yes)
+    :do nothing;
+elseif (VALIDMINUTE) then (yes)
+    :seconds := 0;
+    if (bit 20 set\nand\nxor of bit21 to bit27 = bit28\nand\nxor of bit29 to bit34 = bit35\nand\nxor of bit36 to bit57 = bit58 ?) then (yes)
+        :read bits 17 to 18 into daylight_saving_time_bitfield;
+        :daylight_saving_time := !!(daylight_saving_time_bitfield & 0b10);
+        :minutes := bit21×1 + bit22×2 + bit23×4 + bit24×8\nbit25×10 + bit26×20 + bit27×40;
+        :hours := bit29×1 + bit30×2 + bit31×4 + bit32×8\nbit33×10 + bit34×20;
+        :day_of_month := bit36×1 + bit37×2 + bit38×4 + bit39×8\nbit40×10 + bit41×20;
+        :day_of_week := bit42×1 + bit43×2 + bit44×4;
+        :month := bit45×1 + bit46×2 + bit47×4 + bit48×8\nbit49×10;
+        :year := bit50×1 + bit51×2 + bit52×4 + bit53×8\nbit54×10 + bit55×20 + bit56×40 + bit57×80;
+        if (data invalid) then (yes)
+            :error;
+        endif
+    else (no)
+        :error;
+    endif
+    :reset frame;
+    :display date on LCD;
+endif
+
+end
+
+@enduml

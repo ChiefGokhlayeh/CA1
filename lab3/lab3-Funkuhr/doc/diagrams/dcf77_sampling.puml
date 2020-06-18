@@ -1,0 +1,56 @@
+@startuml
+
+skinparam defaultTextAlignment center
+
+title DCF77 Sample Procedure
+footer (C) 2020 Andreas Baulig
+
+' enum { NODCF77EVENT=0, VALIDZERO, VALIDONE, VALIDSECOND, VALIDMINUTE, INVALID }
+
+start
+
+:read value from io;
+
+:edge := detect edge using value and previous_value;
+:previous_value := value;
+
+:time_delta := current_time - last_fall_time;
+
+if (rising edge ?) then (yes)
+    :disable LED B.1;
+    if (time_delta > MAX_LONG_SYMBOL_TIME) then (yes)
+        :result := INVALD;
+    elseif (time_delta >= MIN_LONG_SYMBOL_TIME ?) then (yes)
+        :result := VALIDONE;
+    elseif (time_delta <= MAX_SHORT_SYMBOL_TIME\nand\ntime_delta >= MIN_SHORT_SYMBOL_TIME ?) then (yes)
+        :result := VALIDZERO;
+    else (no)
+        :result := INVALID;
+    endif
+elseif (falling edge ?) then (yes)
+    :enable LED B.1;
+    if (time_delta <= MAX_START_OF_MINUTE_TIME ?) then (yes)
+        if (time_delta >= MIN_START_OF_MINUTE_TIME ?) then (yes)
+            :result := VALIDMINUTE;
+        elseif (time_delta <= MAX_SECOND_TIME\nand\ntime_delta >= MIN_SECOND_TIME ?) then (yes)
+            :result := VALIDSECOND;
+        else (no)
+            :result := INVALID;
+        endif
+    else (no)
+        :result := INVALID;
+    endif
+    :last_fall_time = current_time;
+elseif (no edge ?) then (yes)
+    if (time_delta < MAX_START_OF_MINUTE_TIME) then (yes)
+        :result := NODCF77EVENT;
+    else (no)
+        :result := INVALID;
+    endif
+endif
+
+:return result;
+
+end
+
+@enduml
