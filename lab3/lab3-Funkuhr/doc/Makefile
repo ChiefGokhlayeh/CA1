@@ -16,7 +16,7 @@ PDFS := $(LATEX:%.tex=$(BUILD_DIR)/%.pdf)
 
 .PHONY: images pdf clean
 all: pdf
-images: $(SVGS) $(PDF_TEXS) #$(PNGS)
+images: $(SVGS) $(PDF_TEXS) $(PNGS)
 pdf: $(PDFS)
 clean:
 	rm -rf $(BUILD_DIR)

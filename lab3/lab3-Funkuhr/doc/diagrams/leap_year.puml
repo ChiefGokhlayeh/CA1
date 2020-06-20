@@ -1,0 +1,22 @@
+@startuml
+
+skinparam defaultTextAlignment center
+
+title Determine Leap Year
+footer (C) 2020 Andreas Baulig
+
+start
+
+if (year divisible\nby 4?) then (no)
+    :not a leap year;
+elseif (year divisible\nby 100?) then (no)
+    :leap year;
+elseif (year divisible\nby 400?) then (no)
+    :not a leap year;
+else (yes)
+    :leap year;
+endif
+
+end
+
+@enduml

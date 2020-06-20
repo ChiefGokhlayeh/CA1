@@ -1,4 +1,87 @@
 % !TeX root = ../main.tex
 \chapter{The Clock Module}
 
-\textcite{Mishra2016}
+\section{Objectives}
+
+\begin{itemize}
+    \item Store system date and time as components of Gregorian calendar:
+          \begin{itemize}
+              \item Seconds (\numrange{0}{59})
+              \item Minutes (\numrange{0}{59})
+              \item Hours (\numrange{0}{23})
+              \item Days in month (\numrange{1}{31}, \numrange{1}{30}, \numrange{1}{29} or \numrange{1}{28} depending on month and year; \num{0} it to be considered invalid)
+              \item Day of week (\numrange{1}{7} representing days Monday to Sunday; \num{0} is to be considered invalid)
+              \item Months (\numrange{1}{12}; \num{0} it to be considered invalid)
+              \item Years (starting at year \num{1})
+          \end{itemize}
+    \item Increment seconds counter every second.
+    \item Allow user to switch timezone via button press.
+    \item Single point of access to LCD display of date and time.
+\end{itemize}
+
+\section{Interface}
+
+\begin{itemize}
+    \item House sys-tick, used to increment second counter and do other housekeeping stuff.
+    \item Process \emph{second passed} events through non-ISR function.
+    \item Set system date and time.
+\end{itemize}
+
+\section{Details}
+
+\subsection{Determining Day of Week}\label{sec:determining_day_of_week}
+
+While the DCF77 frame does contain a distinct field for day-of-week, the Gregorian calendar date alone is sufficient to determine this information already. The algorithm to do so is fairly compact and doesn't require very much calculating. It is based on the fact that certain months start on the same day-of-week \cite{Mishra2016} and \DTMenglishmonthname{1} \nth{1} of year 0001 is set on a Monday. There are of course complications, as the number of days per year vary from \numrange{365}{366}, depending on the type of year. Years with \num{366} days are referred to as \emph{leap years}, while years with \num{365} days are considered \emph{normal years}. An algorithm to determine whether a given year is a leap or normal year is depicted in Figure~\ref{fig:leap_year}.
+
+\begin{figure}
+    \centering
+    \includeinkscape[width=\textwidth]{generated/leap_year.pdf_tex}
+    \caption{Algorithm to determine whether a given year is a leap or normal year.}\label{fig:leap_year}
+\end{figure}
+
+The way the algorithm accounts for these additional days (called \emph{leap days}) is by first calculating the total number of leap days for a given year since year \num{1}. Taking the remainder of the sum of all leap days plus the year value results in the day-of-week for \DTMenglishmonthname{1} \nth{1} of that year (see Equation~\ref{equ:january_first_of_year}).
+
+\begin{equation}\label{equ:january_first_of_year}
+    \text{day-of-week}_{\text{Jan \nth{1}}}(y) = \left(y + \lfloor y/4 \rfloor - \lfloor y/100 \rfloor + \lfloor y/400 \rfloor\right) \mod{7}
+\end{equation}
+
+Utilizing the insight that certain months start on the same day-of-week, a look-up table (as depicted in Column \emph{Normal Offset} of Table~\ref{tab:start_of_months_offsets}) with offsets relative to \DTMenglishmonthname{1} \nth{1} can be generated.
+
+\begin{table}[htb]
+    \centering
+    \begin{tabularx}{0.55\textwidth}{r c c}
+        \toprule
+        Month                    & Normal Offset & Corrected Offset \\
+        \midrule
+        \DTMenglishmonthname{1}  & \num{0}       & \num{0}          \\
+        \DTMenglishmonthname{2}  & \num{3}       & \num{3}          \\
+        \DTMenglishmonthname{3}  & \num{3}       & \num{2}          \\
+        \DTMenglishmonthname{4}  & \num{6}       & \num{5}          \\
+        \DTMenglishmonthname{5}  & \num{1}       & \num{0}          \\
+        \DTMenglishmonthname{6}  & \num{4}       & \num{3}          \\
+        \DTMenglishmonthname{7}  & \num{6}       & \num{5}          \\
+        \DTMenglishmonthname{8}  & \num{2}       & \num{1}          \\
+        \DTMenglishmonthname{9}  & \num{5}       & \num{4}          \\
+        \DTMenglishmonthname{10} & \num{0}       & \num{6}          \\
+        \DTMenglishmonthname{11} & \num{3}       & \num{2}          \\
+        \DTMenglishmonthname{12} & \num{5}       & \num{4}          \\
+        \bottomrule
+    \end{tabularx}
+    \caption{Look-up table with start-of-month offsets relative to \DTMenglishmonthname{1} \nth{1}.}\label{tab:start_of_months_offsets}
+\end{table}
+
+However, before a look-up can be made, the current month needs to be taken into consideration. Leap days in the Gregorian system are only applied at the end of month \DTMenglishmonthname{2}, not \DTMenglishmonthname{1}, as Equation~\ref{equ:january_first_of_year} assumes. This can be fixed by subtracting the year count by one before calculating the number of leap days, if the month in question is \DTMenglishmonthname{3} or beyond. To fix the now resulting off-by-one-error for months \DTMenglishmonthname{3} to \DTMenglishmonthname{12}, in cases where the leap day for the current year was dropped, a modified look-up table can be generated. This table decrements each offset by one, starting with the month of \DTMenglishmonthname{3} (see Column \emph{Corrected Offset} of Table~\ref{tab:start_of_months_offsets}).
+
+\subsection{Handling Date Over-/Underflows}
+
+A date over- or underflow happens, when one component of the date/time structure wraps around and in-/decrements the next one. A simple example where this might happen is every day at \DTMdisplaytime{23}{59}{59}. The next second will be \DTMdisplaytime{00}{00}{00} of the following day. If the day counter already sits at the end-of-month, months need to be incremented as well. Same applies for the month of \DTMenglishmonthname{12}, after which the year counter needs to be incremented.
+
+The way this mechanism is implemented in the embedded application is by singular increment or decrement functions for each date/time component. If an over-/underflow is detected, the next date/time component is updated and so on. Offsetting the date/time structure by multiple steps (as for handling timezones) is done by in-/decrementing the corresponding field multiple times until the desired offset is reached. After each change of date, the day-of-week is calculated anew, using the algorithm discussed in Section~\ref{sec:determining_day_of_week}.
+
+\subsection{Timezones}
+
+Two timezones are supported: DCF77 or DE (\num[explicit-sign=+]{0}) and US (\num{-6}). Note that daylight-saving-time is not accounted for, and the offset caused by it remains unchanged.
+
+Switching timezones is done via press of button \texttt{H.3}. Button debouncing and handling is implemented directly inside the Clock module, by polling the button state inside the \SI{10}{\milli\second} tick interrupt.
+
+The timezone offset is applied only on the display output. The internal representation of the date/time remains unchanged and always assumes DCF77 (or German) time.

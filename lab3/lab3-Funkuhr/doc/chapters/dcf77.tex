@@ -1,2 +1,59 @@
 % !TeX root = ../main.tex
 \chapter{The DCF77 Module}
+
+\section{Objectives}
+
+\begin{itemize}
+    \item Detect start of minute.
+    \item Sample and decode the DCF77 signal arriving at the real or simulated port. Fields to decode:
+          \begin{itemize}
+              \item Minutes
+              \item Hours
+              \item Days in month
+              \item Months
+              \item Years
+              \item Day of week (not used, as Clock implements its own day-of-week algorithm, see Section~\ref{sec:determining_day_of_week})
+          \end{itemize}
+    \item Verify decoded data through means of parity and sanity checks.
+    \item Pass fully decoded and verified date/time information to Clock module.
+    \item Indicate state information via LEDs.
+\end{itemize}
+
+\section{Interface}
+
+\begin{itemize}
+    \item Sample DCF77 signal port through precise \SI{10}{\milli\second} tick interrupt.
+    \item Parse DCF77 events and decode frame in non-ISR context.
+\end{itemize}
+
+\section{Details}
+
+\subsection{Interpreting the DCF77 Signal}
+
+As the sampling is done in ISR context, no long runing actions should be taken. Therefore, parsing the DCF77 frame information is split into multiple stages. The stages are similar to those of a compiler frontend. First a lexical analyzer generates a stream of tokens (in this case DCF77 events). These are fed into a syntactical parser and put into a frame representation. The semantic parser takes the information stored in a completed frame and decodes individual fields out of it. It also does some verification of the obtained data.
+
+\subsection{Tokenizing}
+
+Figure~\ref{fig:dcf77_sampling} depicts the sampling algorithm, used to generate specific DCF77 events (or tokens), that can later be processed by a tasklet.
+
+The procedure can be further subdivided in an edge detector, used to detect a changes in the DCF77 signal line; and a interpreter, which consumes these edges and compares their timings to determine the type of information received.
+
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=0.965\textheight,angle=90]{generated/dcf77_sampling.png}
+    \caption{Flow-chart of the DCF77 signal sampling procedure.}\label{fig:dcf77_sampling}
+\end{figure}
+
+\subsection{Parsing and Decoding}
+
+Figure~\ref{fig:dcf77_parsing} depicts the parsing procedure, used to interpret DCF77 events and decode a frame.
+
+Before a frame can be decoded a full minute of data (fully aligned frame) needs to be received. This data, in the form of bits, is stored in a bit-array and buffered until the minute mark is reached. Once the \texttt{VALIDMINUTE} event is received and \SI{59}{\bit} of data are available, decoding starts.
+
+If the decoded frame passes parity and sanity checks, its information is forwarded to the Clock module, and set as new system date/time.
+
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=\textwidth]{generated/dcf77_parsing.png}
+    \caption{Flow-chart of the parsing procedure.}\label{fig:dcf77_parsing}
+\end{figure}
